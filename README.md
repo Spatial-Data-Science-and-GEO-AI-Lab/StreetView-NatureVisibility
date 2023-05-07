@@ -1,0 +1,1 @@
+# StreetView-NatureVisibility
