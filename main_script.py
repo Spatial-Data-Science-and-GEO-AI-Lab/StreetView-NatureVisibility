@@ -22,7 +22,7 @@ def download_images_for_points(gdf, city, access_token, save_results=False, path
     
     with mp.get_context("spawn").Pool(processes=num_processes) as pool:
         # Apply the function to each part of the dataset using multiprocessing
-        results = pool.starmap(process_data, [(index, data_part, processor, model, city, access_token, save_results, path) for index, data_part in enumerate(data_parts)])
+        results = pool.starmap(process_data, [(index, data_part, processor, model, city, access_token, path) for index, data_part in enumerate(data_parts)])
 
         # Combine the results from all parts
         images_results = [result for part_result in results for result in part_result]

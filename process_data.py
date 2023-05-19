@@ -191,7 +191,7 @@ def crop_panoramic_images(original_width, image, segmentation, road_centre):
         
         # Image requires assembly of two sides
         elif centre > xrapneeded:
-            xlo = int(centre - w4 / 2) # horizontal_offset
+            xlo = int(centre - (w4/2)) # horizontal_offset
             w4_p1 = width - xlo
             w4_p2 = w4 - w4_p1
             cropped_image_1 = image.crop((xlo, h4, xlo + w4_p1, h4 + hFor43))
@@ -201,17 +201,27 @@ def crop_panoramic_images(original_width, image, segmentation, road_centre):
             cropped_image.paste(cropped_image_1, (0, 0))
             cropped_image.paste(cropped_image_2, (w4_p1, 0))
 
-            cropped_segmentation = segmentation[h4:h4+hFor43, xlo:xlo+w4]
+            cropped_segmentation_1 = segmentation[h4:h4+hFor43, xlo:xlo+w4_p1]
+            cropped_segmentation_2 = segmentation[h4:h4+hFor43, 0:w4_p2]
+            cropped_segmentation = torch.cat((cropped_segmentation_1, cropped_segmentation_2), dim=1)
         
         # Must paste together the two sides of the image
         elif centre < (w4 / 2):
-            w4_p1 = int((w4 / 2) - width)
+            w4_p1 = int((w4 / 2) - centre)
             xhi = width - w4_p1
             w4_p2 = w4 - w4_p1
 
             cropped_image_1 = image.crop((xhi, h4, xhi + w4_p1, h4 + hFor43))
             cropped_image_2 = image.crop((0, h4, w4_p2, h4 + hFor43))
 
+            cropped_image = Image.new(image.mode, (w4, hFor43))
+            cropped_image.paste(cropped_image_1, (0, 0))
+            cropped_image.paste(cropped_image_2, (w4_p1, 0))
+
+            cropped_segmentation_1 = segmentation[h4:h4+hFor43, xhi:xhi+w4_p1]
+            cropped_segmentation_2 = segmentation[h4:h4+hFor43, 0:w4_p2]
+            cropped_segmentation = torch.cat((cropped_segmentation_1, cropped_segmentation_2), dim=1)
+            
         # Straightforward crop
         else:
             xlo = int(centre - w4/2)
