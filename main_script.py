@@ -1,7 +1,8 @@
 import os
 os.environ['USE_PYGEOS'] = '0'
 
-from process_data import process_data, prepare_folders, get_models
+from process_data import process_data, get_models
+from osmnx_road_network import get_road_network, select_points_on_road_network, get_features_on_points
 import multiprocessing as mp
 import geopandas as gpd
 import numpy as np
@@ -10,9 +11,9 @@ from time import time
 import sys
 
 
-def download_images_for_points(gdf, city, access_token, path=""):
+def download_images_for_points(gdf, city, access_token):
     processor, model = get_models()
-    prepare_folders(path, city)
+    #prepare_folders(city)
     
     images_results = []
 
@@ -22,7 +23,7 @@ def download_images_for_points(gdf, city, access_token, path=""):
     
     with mp.get_context("spawn").Pool(processes=num_processes) as pool:
         # Apply the function to each part of the dataset using multiprocessing
-        results = pool.starmap(process_data, [(index, data_part, processor, model, city, access_token, path) for index, data_part in enumerate(data_parts)])
+        results = pool.starmap(process_data, [(index, data_part, processor, model, city, access_token) for index, data_part in enumerate(data_parts)])
 
         # Combine the results from all parts
         images_results = [result for part_result in results for result in part_result]
@@ -37,17 +38,20 @@ def download_images_for_points(gdf, city, access_token, path=""):
 if __name__ == "__main__":
     city = sys.argv[1] # City to analyse
     access_token = sys.argv[2] # Access token for mapillary
-    file_name = sys.argv[3] # Name of the file where the results are gonna be stored
-    path = sys.argv[4] # Path to store the results
-    path_to_file = sys.argv[5] # Path to the points file
+    
+    road = get_road_network(city)
+    points = select_points_on_road_network(road)
+    features = get_features_on_points(points, access_token)
 
-    gdf_features = gpd.read_file(path_to_file)
-    gdf_features = gdf_features.head(10) # I'm using this line for testing
+    file_path = os.path.join("results", city, "points.gpkg")
+    features.to_file(file_path, driver="GPKG")
+
+    features = features.head(10) # I'm using this line for testing
 
     # Get the initial time
     start_time = time()
     
-    results = download_images_for_points(gdf_features, city, access_token)
+    results = download_images_for_points(features, city, access_token)
     # Get the final time
     end_time = time()
 
@@ -59,5 +63,5 @@ if __name__ == "__main__":
 
     print(f"Running time: {formatted_time}")
 
-    file_path = os.path.join(path, "results", city, f"{file_name}.gpkg")
+    file_path = os.path.join("results", city, "GVI.gpkg")
     results.to_file(file_path, driver="GPKG")

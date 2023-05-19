@@ -43,27 +43,6 @@ color_palette = [
 ]
 
 
-def prepare_folders(path, city):
-    dir_path = os.path.join(path, "results", city, "images")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-        
-    dir_path = os.path.join(path, "results", city, "final_images")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-        
-    dir_path = os.path.join(path, "results", city, "segments")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-        
-    dir_path = os.path.join(path, "results", city, "pickles")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-
-    dir_path = os.path.join(path, "results", city, "final_pickles")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-
 def get_models():
     processor = AutoImageProcessor.from_pretrained("facebook/mask2former-swin-large-cityscapes-semantic")
     model = Mask2FormerForUniversalSegmentation.from_pretrained("facebook/mask2former-swin-large-cityscapes-semantic")
@@ -81,49 +60,6 @@ def segment_images(image, processor, model):
     segmentation = processor.post_process_semantic_segmentation(outputs, target_sizes=[image.size[::-1]])[0]
 
     return segmentation
-
-
-def save_files(image_id, image, segmentation, images, pickles, city, path=""):
-    # Save original image 
-    dir_path = os.path.join(path, "results", city, "images")
-    img_path = os.path.join(dir_path, "{}.jpg".format(image_id))
-    image.save(img_path)
-
-    color_seg = np.zeros((segmentation.shape[0], segmentation.shape[1], 3), dtype=np.uint8) # height, width, 3
-    palette = np.array(color_palette)
-    for label, color in enumerate(palette):
-        color_seg[segmentation == label, :] = color
-    
-    # Show image + mask
-    img = np.array(image) * 0.4 + color_seg * 0.6
-    img = img.astype(np.uint8)
-
-    # Save final images
-    dir_path = os.path.join(path, "results", city, "final_images")
-    for index, image in enumerate(images):
-        img_path = os.path.join(dir_path, "{}_{}.jpg".format(image_id, index))
-        image.save(img_path)
-    
-    # Convert numpy array to PIL Image and save masked image
-    pil_img = Image.fromarray(img)
-    dir_path = os.path.join(path, "results", city, "segments")
-    img_path = os.path.join(dir_path, "{}.png".format(image_id))
-    pil_img.save(img_path)
-
-    # Save segmentation array as a pickle file
-    dir_path = os.path.join(path, "results", city, "pickles")
-    pickle_path = os.path.join(dir_path, "{}.pkl".format(image_id))
-    with open(pickle_path, 'wb') as f:
-        pickle.dump(segmentation, f)
-    
-    # Save final segmentation arrays as a pickle file
-    dir_path = os.path.join(path, "results", city, "final_pickles")
-    for index, pick in enumerate(pickles):
-        pickle_path = os.path.join(dir_path, "{}_{}.pkl".format(image_id, index))
-        with open(pickle_path, 'wb') as f:
-            pickle.dump(pick, f)
-    
-    return pickle_path
 
 
 # Based on Matthew Danish code (https://github.com/mrd/vsvi_filter/tree/master)
@@ -244,7 +180,7 @@ def get_GVI(segmentations):
     return green_percentage / len(segmentations)
 
 
-def process_images(image_id, image_url, is_panoramic, processor, model, city, path):
+def process_images(image_id, image_url, is_panoramic, processor, model, city):
     try:
         image = Image.open(requests.get(image_url, stream=True).raw)
 
@@ -283,11 +219,8 @@ def process_images(image_id, image_url, is_panoramic, processor, model, city, pa
             # Now we can get the Green View Index
             GVI = get_GVI(pickles)
 
-            if path: save_files(image_id, image, segmentation, images, pickles, city, path)
             return [GVI, is_panoramic, False, False]
         else:
-            if path: save_files(image_id, image, segmentation, [], [], city, path)
-        
             # There are not road centres, so the image is unusable
             return [0, None, True, False]
     except:
@@ -295,8 +228,7 @@ def process_images(image_id, image_url, is_panoramic, processor, model, city, pa
 
 
 # Download images
-def download_image(geometry, image_metadata, city, access_token, processor, model, path):
-    if path: prepare_folders(path, city)
+def download_image(geometry, image_metadata, city, access_token, processor, model):
     header = {'Authorization': 'OAuth {}'.format(access_token)}
 
     image_id = image_metadata["properties"]["id"]
@@ -307,13 +239,13 @@ def download_image(geometry, image_metadata, city, access_token, processor, mode
     data = response.json()
     image_url = data["thumb_original_url"]
 
-    result = process_images(image_id, image_url, is_panoramic, processor, model, city, path)
+    result = process_images(image_id, image_url, is_panoramic, processor, model, city)
     result.insert(0, geometry)
 
     return result
 
 
-def process_data(index, data_part, processor, model, city, access_token, path):
+def process_data(index, data_part, processor, model, city, access_token):
     results = []
     max_workers = 5 # We can adjutst this value
     
@@ -322,8 +254,7 @@ def process_data(index, data_part, processor, model, city, access_token, path):
         for _, row in data_part.iterrows():
             feature = row["feature"]
             geometry = row["geometry"]
-            feature = json.loads(feature)
-            futures.append(executor.submit(download_image, geometry, feature, city, access_token, processor, model, path))
+            futures.append(executor.submit(download_image, geometry, feature, city, access_token, processor, model))
         
         for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
             image_result = future.result()
