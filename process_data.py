@@ -7,17 +7,17 @@ import json
 import matplotlib.pyplot as plt
 
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
-from PIL import Image, ImageDraw
+from scipy.signal import find_peaks
 import torch
 
+from PIL import Image
 from tqdm import tqdm
 import numpy as np
 import requests
-
+import pickle
 import json
 
-from scipy.signal import find_peaks
-import pickle
+
 
 # color palette to map each class to a RGB value
 color_palette = [
@@ -41,6 +41,71 @@ color_palette = [
     [0, 0, 230],  # 17: motorcycle - blue
     [119, 11, 32]  # 18: bicycle - dark red
 ]
+
+
+def prepare_folders(city, path=""):
+    dir_path = os.path.join(path, "results", city, "images")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+        
+    dir_path = os.path.join(path, "results", city, "final_images")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+        
+    dir_path = os.path.join(path, "results", city, "segments")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+        
+    dir_path = os.path.join(path, "results", city, "pickles")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    dir_path = os.path.join(path, "results", city, "final_pickles")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+
+def save_files(image_id, segmentation, images, pickles, city, path=""):
+    # Save original image 
+    dir_path = os.path.join(path, "results", city, "images")
+    img_path = os.path.join(dir_path, "{}.jpg".format(image_id))
+    image.save(img_path)
+
+    color_seg = np.zeros((segmentation.shape[0], segmentation.shape[1], 3), dtype=np.uint8) # height, width, 3
+    palette = np.array(color_palette)
+    for label, color in enumerate(palette):
+        color_seg[segmentation == label, :] = color
+    
+    # Show image + mask
+    img = np.array(image) * 0.4 + color_seg * 0.6
+    img = img.astype(np.uint8)
+
+    # Save final images
+    dir_path = os.path.join(path, "results", city, "final_images")
+    for index, image in enumerate(images):
+        img_path = os.path.join(dir_path, "{}_{}.jpg".format(image_id, index))
+        image.save(img_path)
+    
+    # Convert numpy array to PIL Image and save masked image
+    pil_img = Image.fromarray(img)
+    dir_path = os.path.join(path, "results", city, "segments")
+    img_path = os.path.join(dir_path, "{}.png".format(image_id))
+    pil_img.save(img_path)
+
+    # Save segmentation array as a pickle file
+    dir_path = os.path.join(path, "results", city, "pickles")
+    pickle_path = os.path.join(dir_path, "{}.pkl".format(image_id))
+    with open(pickle_path, 'wb') as f:
+        pickle.dump(segmentation, f)
+    
+    # Save final segmentation arrays as a pickle file
+    dir_path = os.path.join(path, "results", city, "final_pickles")
+    for index, pick in enumerate(pickles):
+        pickle_path = os.path.join(dir_path, "{}_{}.pkl".format(image_id, index))
+        with open(pickle_path, 'wb') as f:
+            pickle.dump(pick, f)
+    
+    return pickle_path
 
 
 def get_models():
@@ -180,7 +245,7 @@ def get_GVI(segmentations):
     return green_percentage / len(segmentations)
 
 
-def process_images(image_id, image_url, is_panoramic, processor, model, city):
+def process_images(image_url, is_panoramic, processor, model):
     try:
         image = Image.open(requests.get(image_url, stream=True).raw)
 
@@ -218,7 +283,6 @@ def process_images(image_id, image_url, is_panoramic, processor, model, city):
         
             # Now we can get the Green View Index
             GVI = get_GVI(pickles)
-
             return [GVI, is_panoramic, False, False]
         else:
             # There are not road centres, so the image is unusable
