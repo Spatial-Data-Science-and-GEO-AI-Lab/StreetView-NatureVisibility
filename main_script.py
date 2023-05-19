@@ -38,6 +38,10 @@ def download_images_for_points(gdf, city, access_token):
 if __name__ == "__main__":
     city = sys.argv[1] # City to analyse
     access_token = sys.argv[2] # Access token for mapillary
+
+    dir_path = os.path.join("results", city)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
     
     road = get_road_network(city)
     points = select_points_on_road_network(road)
@@ -46,7 +50,7 @@ if __name__ == "__main__":
     file_path = os.path.join("results", city, "points.gpkg")
     features.to_file(file_path, driver="GPKG")
 
-    features = features.head(10) # I'm using this line for testing
+    #features = features.head(10) # I'm using this line for testing
 
     # Get the initial time
     start_time = time()

@@ -292,7 +292,7 @@ def process_images(image_url, is_panoramic, processor, model):
 
 
 # Download images
-def download_image(geometry, image_metadata, city, access_token, processor, model):
+def download_image(geometry, image_metadata, access_token, processor, model):
     header = {'Authorization': 'OAuth {}'.format(access_token)}
 
     image_id = image_metadata["properties"]["id"]
@@ -303,7 +303,7 @@ def download_image(geometry, image_metadata, city, access_token, processor, mode
     data = response.json()
     image_url = data["thumb_original_url"]
 
-    result = process_images(image_id, image_url, is_panoramic, processor, model, city)
+    result = process_images(image_url, is_panoramic, processor, model)
     result.insert(0, geometry)
 
     return result
@@ -318,7 +318,7 @@ def process_data(index, data_part, processor, model, city, access_token):
         for _, row in data_part.iterrows():
             feature = row["feature"]
             geometry = row["geometry"]
-            futures.append(executor.submit(download_image, geometry, feature, city, access_token, processor, model))
+            futures.append(executor.submit(download_image, geometry, feature, access_token, processor, model))
         
         for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
             image_result = future.result()
