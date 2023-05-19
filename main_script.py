@@ -10,7 +10,7 @@ from time import time
 import sys
 
 
-def download_images_for_points(gdf, city, access_token, save_results=False, path=""):
+def download_images_for_points(gdf, city, access_token, path=""):
     processor, model = get_models()
     prepare_folders(path, city)
     
@@ -30,20 +30,23 @@ def download_images_for_points(gdf, city, access_token, save_results=False, path
         # Close the pool to release resources
         pool.close()
         pool.join()
-    return gpd.GeoDataFrame(images_results, columns=["original_index", "geometry", "GVI", "is_panoramic", "missing", "error"])
+
+    return gpd.GeoDataFrame(images_results, columns=["geometry", "GVI", "is_panoramic", "missing", "error"])
 
 
 if __name__ == "__main__":
-    city = sys.argv[1]
-    access_token = sys.argv[2]
-    path = sys.argv[3]
-    path_to_file = sys.argv[4]
+    city = sys.argv[1] # City to analyse
+    access_token = sys.argv[2] # Access token for mapillary
+    file_name = sys.argv[3] # Name of the file where the results are gonna be stored
+    path = sys.argv[4] # Path to store the results
+    path_to_file = sys.argv[5] # Path to the points file
 
     gdf_features = gpd.read_file(path_to_file)
-    gdf_features = gdf_features.head(1000)
+    gdf_features = gdf_features.head(10) # I'm using this line for testing
 
     # Get the initial time
     start_time = time()
+    
     results = download_images_for_points(gdf_features, city, access_token)
     # Get the final time
     end_time = time()
@@ -54,7 +57,7 @@ if __name__ == "__main__":
     # Format the elapsed time as "hh:mm:ss"
     formatted_time = str(timedelta(seconds=elapsed_time))
 
-    print(f"Elapsed time: {formatted_time}")
+    print(f"Running time: {formatted_time}")
 
-    file_path = os.path.join(path, "results", city, "GVI.gpkg")
+    file_path = os.path.join(path, "results", city, f"{file_name}.gpkg")
     results.to_file(file_path, driver="GPKG")

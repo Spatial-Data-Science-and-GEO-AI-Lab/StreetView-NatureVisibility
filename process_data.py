@@ -295,7 +295,7 @@ def process_images(image_id, image_url, is_panoramic, processor, model, city, pa
 
 
 # Download images
-def download_image(index, geometry, image_metadata, city, access_token, processor, model, path):
+def download_image(geometry, image_metadata, city, access_token, processor, model, path):
     if path: prepare_folders(path, city)
     header = {'Authorization': 'OAuth {}'.format(access_token)}
 
@@ -309,7 +309,6 @@ def download_image(index, geometry, image_metadata, city, access_token, processo
 
     result = process_images(image_id, image_url, is_panoramic, processor, model, city, path)
     result.insert(0, geometry)
-    result.insert(0, index)
 
     return result
 
@@ -317,15 +316,16 @@ def download_image(index, geometry, image_metadata, city, access_token, processo
 def process_data(index, data_part, processor, model, city, access_token, path):
     results = []
     max_workers = 5 # We can adjutst this value
+    
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for _, row in data_part.iterrows():
             feature = row["feature"]
             geometry = row["geometry"]
             feature = json.loads(feature)
-            futures.append(executor.submit(download_image, index, geometry, feature, city, access_token, processor, model, path))
+            futures.append(executor.submit(download_image, geometry, feature, city, access_token, processor, model, path))
         
-        for future in tqdm(as_completed(futures), total=len(futures), desc="Downloading images"):
+        for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
             image_result = future.result()
             results.append(image_result)
     
