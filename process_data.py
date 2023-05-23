@@ -2,12 +2,10 @@ import os
 os.environ['USE_PYGEOS'] = '0'
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import json
-
-import matplotlib.pyplot as plt
 
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from scipy.signal import find_peaks
+import geopandas as gpd
 import torch
 
 from PIL import Image
@@ -15,7 +13,6 @@ from tqdm import tqdm
 import numpy as np
 import requests
 import pickle
-import json
 
 
 
@@ -291,6 +288,22 @@ def process_images(image_url, is_panoramic, processor, model):
         return [0, None, True, True]
 
 
+def get_gvi_per_buffer(buffered_points, gvi_per_point):
+    gvi_per_point = gvi_per_point[gvi_per_point['missing'] == False]
+    joined = gpd.sjoin(gvi_per_point, buffered_points.set_geometry('buffer'), how='inner', predicate='within')
+
+    # Group the points by buffer
+    grouped = joined.groupby('index_right')
+
+    # Calculate the average 'gvi' for each group
+    avg_gvi = grouped['GVI'].mean().reset_index()
+
+    # Merge with the buffered_points dataframe to get the buffer geometries
+    result = avg_gvi.merge(buffered_points, left_on='index_right', right_index=True)
+
+    return gpd.GeoDataFrame(result[['geometry', 'GVI']])
+
+
 # Download images
 def download_image(geometry, image_metadata, access_token, processor, model):
     header = {'Authorization': 'OAuth {}'.format(access_token)}
@@ -309,7 +322,7 @@ def download_image(geometry, image_metadata, access_token, processor, model):
     return result
 
 
-def process_data(index, data_part, processor, model, city, access_token):
+def process_data(index, data_part, processor, model, access_token):
     results = []
     max_workers = 5 # We can adjutst this value
     

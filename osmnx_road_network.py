@@ -1,8 +1,9 @@
 # Libraries for working with maps and geospatial data
 from vt2geojson.tools import vt_bytes_to_geojson
-from shapely.geometry import Point
+from shapely.geometry import Point, MultiPoint
 from scipy.spatial import cKDTree
 import geopandas as gpd
+from geopandas.tools import sjoin
 import osmnx as ox
 import mercantile
 
@@ -23,6 +24,28 @@ def get_road_network(city):
 
     # Convert the projected graph to a GeoDataFrame
     _, edges = ox.graph_to_gdfs(G_proj)    
+
+    return edges
+
+
+def get_road_network_with_points(buffered_points):
+    # Get the bounds (bounding box) of the buffered points
+    bounding_box = buffered_points.bounds
+
+    # Unpack the bounds into separate variables
+    min_x = bounding_box['minx'].min()
+    min_y = bounding_box['miny'].min()
+    max_x = bounding_box['maxx'].max()
+    max_y = bounding_box['maxy'].max()
+
+    # Get the road network within the bounding box
+    G = ox.graph_from_bbox(max_y, min_y, max_x, min_x, network_type='drive', simplify=True)
+
+    #Project the graph from latitude-longitude coordinates to a local projection (in meters)
+    G_proj = ox.project_graph(G)
+
+    # Convert the projected graph to a GeoDataFrame
+    _, edges = ox.graph_to_gdfs(G_proj)
 
     return edges
 
@@ -58,6 +81,16 @@ def select_points_on_road_network(roads, distance=50):
     gdf_points.set_crs(roads.crs, inplace=True)
 
     return gdf_points
+
+
+def select_points_within_buffers(buffered_points, road_points):
+    points_within_buffers = sjoin(road_points, buffered_points.set_geometry('buffer'), how='inner', predicate='within')
+
+    # Get the unique points that fall within any buffer
+    unique_points = points_within_buffers['geometry_left'].unique()
+
+    # Create a new GeoDataFrame with the points that fall within any buffer
+    return gpd.GeoDataFrame(geometry=[Point(p.x, p.y) for p in unique_points], crs=buffered_points.crs)
 
 
 # This function extracts the features for a given tile
