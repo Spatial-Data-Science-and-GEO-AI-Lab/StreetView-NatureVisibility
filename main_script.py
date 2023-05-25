@@ -11,7 +11,7 @@ from time import time
 import sys
 
 
-def download_images_for_points(gdf, access_token):
+def download_images_for_points(gdf, access_token, max_workers):
     processor, model = get_models()
     #prepare_folders(city)
     
@@ -23,7 +23,7 @@ def download_images_for_points(gdf, access_token):
     
     with mp.get_context("spawn").Pool(processes=num_processes) as pool:
         # Apply the function to each part of the dataset using multiprocessing
-        results = pool.starmap(process_data, [(index, data_part, processor, model, access_token) for index, data_part in enumerate(data_parts)])
+        results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers) for index, data_part in enumerate(data_parts)])
 
         # Combine the results from all parts
         images_results = [result for part_result in results for result in part_result]
@@ -39,11 +39,15 @@ def download_images_for_points(gdf, access_token):
 if __name__ == "__main__":
     args = sys.argv
 
-    if len(sys.argv) == 3:
+    if len(sys.argv) == 7:
         city = args[1] # City to analyse
         access_token = args[2] # Access token for mapillary
+        path = args[3]
+        begin = int(args[4])
+        end = int(args[5])
+        max_workers = int(args[6])
 
-        dir_path = os.path.join("results", city)
+        dir_path = os.path.join(path, "results", city)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
     
@@ -51,15 +55,15 @@ if __name__ == "__main__":
         points = select_points_on_road_network(road)
         features = get_features_on_points(points, access_token)
 
-        file_path = os.path.join("results", city, "points.gpkg")
+        file_path = os.path.join(path, "results", city, f"points-{begin}-{end}.gpkg")
         features.to_file(file_path, driver="GPKG")
 
-        features = features.iloc[750:800] # I'm using this line for testing
+        features = features.iloc[begin:end] # I'm using this line for testing
 
         # Get the initial time
         start_time = time()
     
-        results = download_images_for_points(features, access_token)
+        results = download_images_for_points(features, access_token, max_workers)
         # Get the final time
         end_time = time()
 
@@ -71,14 +75,14 @@ if __name__ == "__main__":
 
         print(f"Running time: {formatted_time}")
 
-        file_path = os.path.join("results", city, "GVI.gpkg")
+        file_path = os.path.join("results", city, f"GVI-{begin}-{end}.gpkg")
         results.to_file(file_path, driver="GPKG")
-    
     else:
         file = args[1] # File with address points
         layer_name = args[2]
         buffer_distance = int(args[3]) # in decimal meters
         access_token = args[4] # Access token for mapillary
+        max_workers = int(args[5])
 
         # Read the file as a GeoDataFrame
         gdf_points = gpd.read_file(file, layer=layer_name)
@@ -124,7 +128,7 @@ if __name__ == "__main__":
         print(f"Running time: {formatted_time}")
 
         # Get the GVI per buffer
-        results = get_gvi_per_buffer(gdf_points, gvi_per_point)
+        results = get_gvi_per_buffer(gdf_points, gvi_per_point, max_workers)
 
         file_path = os.path.join("results", "GVI-points.gpkg")
         gvi_per_point.to_file(file_path, driver="GPKG")

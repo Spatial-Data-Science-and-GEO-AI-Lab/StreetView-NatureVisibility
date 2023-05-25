@@ -322,9 +322,8 @@ def download_image(geometry, image_metadata, access_token, processor, model):
     return result
 
 
-def process_data(index, data_part, processor, model, access_token):
+def process_data(index, data_part, processor, model, access_token, max_workers):
     results = []
-    max_workers = 5 # We can adjutst this value
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
