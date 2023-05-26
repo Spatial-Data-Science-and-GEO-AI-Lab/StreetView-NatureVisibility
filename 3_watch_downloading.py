@@ -71,6 +71,7 @@ def process_images(image_path, processor, model):
 
 def update_csv(newrow):
     csv_file = 'gvi-points.csv'
+    dir_path = os.path.join(path, "results", city, "gvi")
     csv_path = os.path.join(dir_path, csv_file)
 
     # Check if the CSV file exists

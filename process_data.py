@@ -2,6 +2,7 @@ import os
 os.environ['USE_PYGEOS'] = '0'
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from scipy.signal import find_peaks
@@ -14,7 +15,10 @@ import numpy as np
 import requests
 import pickle
 
+import csv
 
+# Create a lock to synchronize access to the CSV writer
+csv_lock = threading.Lock()
 
 # color palette to map each class to a RGB value
 color_palette = [
@@ -322,18 +326,54 @@ def download_image(geometry, image_metadata, access_token, processor, model):
     return result
 
 
-def process_data(index, data_part, processor, model, access_token, max_workers):
+def write_to_csv(csv_writer, row):
+    # Acquire the lock before writing to the CSV file
+    csv_lock.acquire()
+    csv_writer.writerow(row)
+    # Release the lock after writing is complete
+    csv_lock.release()
+
+
+def process_data(index, data_part, processor, model, access_token, max_workers, city):
+    
     results = []
-    
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for _, row in data_part.iterrows():
-            feature = row["feature"]
-            geometry = row["geometry"]
-            futures.append(executor.submit(download_image, geometry, feature, access_token, processor, model))
+
+    if city:
+        csv_file = 'gvi-points.csv'
+        dir_path = os.path.join("results", city, "gvi")
+        csv_path = os.path.join(dir_path, csv_file)
+
+        # Open the CSV file in append mode with newline=''
+        with open(csv_path, 'a', newline='') as csvfile:
+            # Create a CSV writer object
+            writer = csv.writer(csvfile)
+              
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = []
+                for _, row in data_part.iterrows():
+                    feature = row["feature"]
+                    geometry = row["geometry"]
+                    futures.append(executor.submit(download_image, geometry, feature, access_token, processor, model))
         
-        for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
-            image_result = future.result()
-            results.append(image_result)
+                for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
+                    image_result = future.result()
+                    results.append(image_result)
+                    
+                    # Write the new row to the CSV file using the synchronized write function
+                    write_to_csv(writer, image_result)
     
-    return results
+            return results
+    
+    else:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for _, row in data_part.iterrows():
+                feature = row["feature"]
+                geometry = row["geometry"]
+                futures.append(executor.submit(download_image, geometry, feature, access_token, processor, model))
+        
+            for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
+                image_result = future.result()
+                results.append(image_result)
+    
+        return results

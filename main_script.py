@@ -11,7 +11,7 @@ from time import time
 import sys
 
 
-def download_images_for_points(gdf, access_token, max_workers):
+def download_images_for_points(gdf, access_token, max_workers, city = None):
     processor, model = get_models()
     #prepare_folders(city)
     
@@ -23,7 +23,7 @@ def download_images_for_points(gdf, access_token, max_workers):
     
     with mp.get_context("spawn").Pool(processes=num_processes) as pool:
         # Apply the function to each part of the dataset using multiprocessing
-        results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers) for index, data_part in enumerate(data_parts)])
+        results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers, city) for index, data_part in enumerate(data_parts)])
 
         # Combine the results from all parts
         images_results = [result for part_result in results for result in part_result]
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         # Get the initial time
         start_time = time()
     
-        results = download_images_for_points(features, access_token, max_workers)
+        results = download_images_for_points(features, access_token, max_workers, city)
         # Get the final time
         end_time = time()
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         # Get the initial time
         start_time = time()
     
-        gvi_per_point = download_images_for_points(features, access_token)
+        gvi_per_point = download_images_for_points(features, access_token, max_workers)
         # Get the final time
         end_time = time()
 
