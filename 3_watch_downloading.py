@@ -1,9 +1,12 @@
 from process_data import get_models, segment_images, find_road_centre, crop_panoramic_images, get_GVI
-
+from concurrent.futures import ThreadPoolExecutor
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from threading import Thread
+from queue import Queue
 from PIL import Image
 import subprocess
+import pickle
 import torch
 import time
 import csv
@@ -12,7 +15,42 @@ import os
 
 processor, model = get_models()
 
-def process_images(image_path, processor, model):
+def prepare_folders(city, path=""):
+    dir_path = os.path.join(path, "results", city, "gvi")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    dir_path = os.path.join(path, "results", city, "images")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+        
+    dir_path = os.path.join(path, "results", city, "pickles")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    dir_path = os.path.join(path, "results", city, "final_pickles")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+
+def save_files(image_id, segmentation, pickles, city, path):
+    # Save segmentation array as a pickle file
+    dir_path = os.path.join(path, "results", city, "pickles")
+    pickle_path = os.path.join(dir_path, "{}.pkl".format(image_id))
+    with open(pickle_path, 'wb') as f:
+        pickle.dump(segmentation, f)
+    
+    # Save final segmentation arrays as a pickle file
+    dir_path = os.path.join(path, "results", city, "final_pickles")
+    for index, pick in enumerate(pickles):
+        pickle_path = os.path.join(dir_path, "{}_{}.pkl".format(image_id, index))
+        with open(pickle_path, 'wb') as f:
+            pickle.dump(pick, f)
+    
+    return pickle_path
+
+
+def process_images(image_path, processor, model, city, path):
     try:
         image_name = os.path.basename(image_path)
 
@@ -58,6 +96,8 @@ def process_images(image_path, processor, model):
             else:
                 images = [image]
                 pickles = [segmentation]
+            
+            save_files(image_id, segmentation, pickles, city, path)
         
             # Now we can get the Green View Index
             GVI = get_GVI(pickles)
@@ -65,7 +105,8 @@ def process_images(image_path, processor, model):
         else:
             # There are not road centres, so the image is unusable
             return True, [image_id, None, None, True, False]
-    except:
+    except Exception as e:
+        print(e)
         return False, [image_id, None, None, True, True]
 
 
@@ -90,45 +131,78 @@ def update_csv(newrow):
         writer.writerow(newrow)
 
 
+def process_image(image_path, city, path):
+    # Add a delay of 1 second to allow for the file to be fully downloaded
+    time.sleep(1)
+
+    retries = 0
+    success = False
+
+    while retries < 5 and not success:
+        success, newrow = process_images(image_path, processor, model, city, path)
+            
+        if not success:
+            retries += 1
+            time.sleep(2 ** (retries + 1))
+        
+    update_csv(newrow)
+    #os.remove(image_path)
+
+
 class FileEventHandler(FileSystemEventHandler):
+    def __init__(self):
+        self.queue = Queue()
+
     def on_created(self, event):
         image_path = event.src_path
+        self.queue.put(image_path)
 
+
+def image_processing_worker(queue, city, path):
+    while True:
+        image_path = queue.get()
         print("New file created:", image_path)
-
-        # Add a delay of 2 seconds to allow for the file to be fully downloaded
-        time.sleep(2)
-
-        retries = 0
-        success = False
-
-        while retries < 5 and not success:
-            success, newrow = process_images(image_path, processor, model)
-            
-            if not success:
-                retries += 1
-                time.sleep(2 ** (retries + 1))
-        
-        update_csv(newrow)
+        process_image(image_path, city, path)
+        print("Finished file:", image_path)
+        queue.task_done()
         
 
 if __name__ == "__main__":
     args = sys.argv
-    city = args[1]
-    path = args[2] if len(args) > 2 else ""
-    folder_to_watch = os.path.join(path, "results", city, "images")
-    event_handler = FileEventHandler()
-    observer = Observer()
-    observer.schedule(event_handler, folder_to_watch, recursive=True)
-    observer.start()
+    download_images = bool(int(args[1]))
+    city = args[2]
+    path = args[3] if len(args) > 3 else ""
+    num_threads = int(args[4]) if len(args) > 4 else 5
 
-    dir_path = os.path.join(path, "results", city, "gvi")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
+    prepare_folders(city, path)
+    
+    if download_images:
+        folder_to_watch = os.path.join(path, "results", city, "images")
+        event_handler = FileEventHandler()
+        observer = Observer()
+        observer.schedule(event_handler, folder_to_watch, recursive=True)
+        observer.start()
 
-    try:
-        while True:
-            time.sleep(0.25)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
+        # Start the image processing worker thread
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            for _ in range(num_threads):
+                worker_thread = Thread(target=image_processing_worker, args=(event_handler.queue, city, path))
+                worker_thread.daemon = True
+                worker_thread.start()
+
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
+        event_handler.queue.join()  # Wait for the queue to be fully processed
+    
+    else:
+        folder_path = os.path.join(path, "results", city, "images")
+
+        file_paths = [os.path.join(folder_path, file_name) for file_name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, file_name)) and file_name != ".DS_Store"]
+
+        for image_path in file_paths:
+            process_image(image_path)
+        

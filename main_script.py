@@ -39,7 +39,7 @@ def download_images_for_points(gdf, access_token, max_workers, city = None):
 if __name__ == "__main__":
     args = sys.argv
 
-    if len(sys.argv) == 7:
+    if len(args) == 7:
         city = args[1] # City to analyse
         access_token = args[2] # Access token for mapillary
         path = args[3]
