@@ -1,10 +1,11 @@
 from process_data import get_models, segment_images, find_road_centre, crop_panoramic_images, get_GVI
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from threading import Thread
 from queue import Queue
 from PIL import Image
+from tqdm import tqdm
 import subprocess
 import pickle
 import torch
@@ -146,7 +147,8 @@ def process_image(image_path, city, path):
             time.sleep(2 ** (retries + 1))
         
     update_csv(newrow)
-    #os.remove(image_path)
+    os.remove(image_path)
+    return image_path
 
 
 class FileEventHandler(FileSystemEventHandler):
@@ -203,6 +205,13 @@ if __name__ == "__main__":
 
         file_paths = [os.path.join(folder_path, file_name) for file_name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, file_name)) and file_name != ".DS_Store"]
 
-        for image_path in file_paths:
-            process_image(image_path)
-        
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = []
+            
+            for filepath in file_paths:
+                future = executor.submit(process_image, filepath, city, path)
+                futures.append(future)
+            
+            for future in tqdm(as_completed(futures), total=len(futures), desc=f"Processing images: "):
+                result = future.result() 
+                print("Finished file:", result)

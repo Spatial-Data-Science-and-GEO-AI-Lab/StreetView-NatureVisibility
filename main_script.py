@@ -11,7 +11,7 @@ from time import time
 import sys
 
 
-def download_images_for_points(gdf, access_token, max_workers, city = None):
+def download_images_for_points(gdf, access_token, max_workers=1, city = None):
     processor, model = get_models()
     #prepare_folders(city)
     
@@ -128,10 +128,10 @@ if __name__ == "__main__":
         print(f"Running time: {formatted_time}")
 
         # Get the GVI per buffer
-        results = get_gvi_per_buffer(gdf_points, gvi_per_point, max_workers)
+        gvi_buffer, points = get_gvi_per_buffer(gdf_points, gvi_per_point, max_workers)
 
         file_path = os.path.join("results", "GVI-points.gpkg")
-        gvi_per_point.to_file(file_path, driver="GPKG")
+        points.to_file(file_path, driver="GPKG")
 
         file_path = os.path.join("results", "GVI-buffer.gpkg")
-        results.to_file(file_path, driver="GPKG")
+        gvi_buffer.to_file(file_path, driver="GPKG")

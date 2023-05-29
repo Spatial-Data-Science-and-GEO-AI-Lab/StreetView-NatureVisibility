@@ -287,25 +287,34 @@ def process_images(image_url, is_panoramic, processor, model):
             return [GVI, is_panoramic, False, False]
         else:
             # There are not road centres, so the image is unusable
-            return [0, None, True, False]
+            return [None, None, True, False]
     except:
-        return [0, None, True, True]
+        return [None, None, True, True]
 
 
 def get_gvi_per_buffer(buffered_points, gvi_per_point):
-    gvi_per_point = gvi_per_point[gvi_per_point['missing'] == False]
     joined = gpd.sjoin(gvi_per_point, buffered_points.set_geometry('buffer'), how='inner', predicate='within')
 
     # Group the points by buffer
     grouped = joined.groupby('index_right')
 
+    # Convert 'grouped' to a DataFrame
+    grouped_df = grouped.apply(lambda x: x.reset_index(drop=True))
+    grouped_df = grouped_df[["geometry_left", "GVI", "is_panoramic", "missing"]].reset_index()
+    # Convert grouped_df to a GeoDataFrame
+    grouped_gdf = gpd.GeoDataFrame(grouped_df, geometry='geometry_left')
+
     # Calculate the average 'gvi' for each group
     avg_gvi = grouped['GVI'].mean().reset_index()
+    point_count = grouped['GVI'].count().reset_index(name='Point_Count')
 
     # Merge with the buffered_points dataframe to get the buffer geometries
     result = avg_gvi.merge(buffered_points, left_on='index_right', right_index=True)
+    result = result.merge(point_count, on='index_right')
+    # Convert the result to a GeoDataFrame
+    result = gpd.GeoDataFrame(result[['geometry', 'GVI', 'Point_Count']])
 
-    return gpd.GeoDataFrame(result[['geometry', 'GVI']])
+    return result, grouped_gdf
 
 
 # Download images
@@ -343,10 +352,17 @@ def process_data(index, data_part, processor, model, access_token, max_workers, 
         dir_path = os.path.join("results", city, "gvi")
         csv_path = os.path.join(dir_path, csv_file)
 
+        # Check if the CSV file exists
+        file_exists = os.path.exists(csv_path)
+
         # Open the CSV file in append mode with newline=''
         with open(csv_path, 'a', newline='') as csvfile:
             # Create a CSV writer object
             writer = csv.writer(csvfile)
+
+            # Write the header row if the file is newly created
+            if not file_exists:
+                writer.writerow(["Image ID", "GVI", "is_panoramic", "missing", "error"])
               
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = []
@@ -357,10 +373,11 @@ def process_data(index, data_part, processor, model, access_token, max_workers, 
         
                 for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
                     image_result = future.result()
+                    # Write the new row to the CSV file
+                    writer.writerow(image_result)
+
                     results.append(image_result)
                     
-                    # Write the new row to the CSV file using the synchronized write function
-                    write_to_csv(writer, image_result)
     
             return results
     
