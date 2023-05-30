@@ -31,10 +31,10 @@ def download_image(geometry, image_metadata, access_token, dir_path):
         image.save(img_path)
 
         # Update csv file here
-        return [geometry, image_id, is_panoramic, False]
+        return [geometry.x, geometry.y, image_id, is_panoramic, False]
     except:
         # Update csv file here
-        return [geometry, image_id, is_panoramic, True]
+        return [geometry.x, geometry.y, image_id, is_panoramic, True]
 
 
 def process_point(point):
@@ -51,17 +51,16 @@ if __name__ == '__main__':
 
     city = args[1] # City to analyse
     access_token = args[2] # Access token for mapillary
-    max_workers = int(args[3]) if len(args) > 3 else 5
-    path = args[4] if len(args) > 4 else ""
+    path = args[3] if len(args) > 3 else ""
+    max_workers = int(args[4]) if len(args) > 4 else 5
     
     begin = int(args[5]) if len(args) > 5 else None
     end = int(args[6]) if len(args) > 6 else None
 
-    
     # Read the file as a GeoDataFrame
     file = os.path.join(path, "results", city, "points/points.gpkg")
     gdf_points = gpd.read_file(file, layer="points")
-
+    
     if begin != None and end != None:
         gdf_points = gdf_points.iloc[begin:end]
 
@@ -74,17 +73,18 @@ if __name__ == '__main__':
 
     # Check if the CSV file exists
     file_exists = os.path.exists(csv_path)
+    mode = 'a' if file_exists else 'w'
 
     # Get the initial time
     start_time = time()
     
     # Open the CSV file in append mode with newline=''
-    with open(csv_path, 'a', newline='') as csvfile:
+    with open(csv_path, mode, newline='') as csvfile:
         writer = csv.writer(csvfile)
 
         # Write the header row if the file is newly created
         if not file_exists:
-            writer.writerow(["Geometry", "image_id", "is_panoramic", "error"])
+            writer.writerow(["x", "y", "image_id", "is_panoramic", "error"])
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []

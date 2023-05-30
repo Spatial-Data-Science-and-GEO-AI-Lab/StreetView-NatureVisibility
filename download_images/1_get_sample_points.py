@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     city = args[1] # City to analyse
     access_token = args[2] # Access token for mapillary
-    path = args[3] if len(args) > 3 else ""
+    path = args[3] if len(args) > 3 else "" # Path to store the results
 
     dir_path = os.path.join(path, "results", city, "points")
     if not os.path.exists(dir_path):
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # Get the final time
     end_time = time()
 
-    file_path = os.path.join(path, "results", city, "points", f"points.gpkg")
+    file_path = os.path.join(dir_path, f"points.gpkg")
     features.to_file(file_path, driver="GPKG")
 
     # Calculate the elapsed time
