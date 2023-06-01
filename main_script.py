@@ -8,12 +8,14 @@ import geopandas as gpd
 import numpy as np
 from datetime import timedelta
 from time import time
+import threading
 import sys
 
 
 def download_images_for_points(gdf, access_token, max_workers, city, file_name):
     processor, model = get_models()
-    #prepare_folders(city)
+    
+    lock = threading.Lock()
     
     images_results = []
 
@@ -23,7 +25,7 @@ def download_images_for_points(gdf, access_token, max_workers, city, file_name):
     
     with mp.get_context("spawn").Pool(processes=num_processes) as pool:
         # Apply the function to each part of the dataset using multiprocessing
-        results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers, city, file_name) for index, data_part in enumerate(data_parts)])
+        results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers, lock, city, file_name) for index, data_part in enumerate(data_parts)])
 
         # Combine the results from all parts
         images_results = [result for part_result in results for result in part_result]

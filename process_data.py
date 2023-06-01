@@ -16,8 +16,6 @@ import json
 
 import csv
 
-import threading
-
 def prepare_folders(city, path):
     dir_path = os.path.join(path, "results", city, "gvi")
     if not os.path.exists(dir_path):
@@ -230,10 +228,8 @@ def download_image(id, geometry, image_metadata, access_token, processor, model)
     return result
 
 
-def process_data(index, data_part, processor, model, access_token, max_workers, city, file_name):
+def process_data(index, data_part, processor, model, access_token, max_workers, lock, city, file_name):
     # Create a lock object
-    lock = threading.Lock()
-
     results = []
 
     csv_file = f"gvi-points-{file_name}.csv"
@@ -256,11 +252,14 @@ def process_data(index, data_part, processor, model, access_token, max_workers, 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
             for _, row in data_part.iterrows():
-                geometry = row["geometry"]
-                feature = row["feature"]
-                id = row["id"]
-                feature = json.loads(feature) if isinstance(feature, str) else feature
-                futures.append(executor.submit(download_image, id, geometry, feature, access_token, processor, model))
+                try:
+                    geometry = row["geometry"]
+                    feature = row["feature"]
+                    id = row["id"]
+                    feature = json.loads(feature) if isinstance(feature, str) else feature
+                    futures.append(executor.submit(download_image, id, geometry, feature, access_token, processor, model))
+                except Exception as e:
+                    print(f"Exception occurred for row {row['id']}: {str(e)}")
         
             for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
                 image_result = future.result()
@@ -270,10 +269,11 @@ def process_data(index, data_part, processor, model, access_token, max_workers, 
                     # Write the new row to the CSV file
                     writer.writerow(image_result)
                     results.append(image_result)
+                except Exception as e:
+                    print(f"Exception occurred for row: {str(e)}")
                 finally:
                     # Release the lock
                     lock.release()
                     
-
                 results.append(image_result)
         return results
