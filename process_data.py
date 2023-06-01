@@ -2,7 +2,6 @@ import os
 os.environ['USE_PYGEOS'] = '0'
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
 
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from scipy.signal import find_peaks
@@ -13,100 +12,20 @@ from PIL import Image
 from tqdm import tqdm
 import numpy as np
 import requests
-import pickle
+import json
 
 import csv
 
-# Create a lock to synchronize access to the CSV writer
-csv_lock = threading.Lock()
+import threading
 
-# color palette to map each class to a RGB value
-color_palette = [
-    [128, 64, 128],  # 0: road - maroon
-    [244, 35, 232],  # 1: sidewalk - pink
-    [70, 70, 70],  # 2: building - dark gray
-    [102, 102, 156],  # 3: wall - purple
-    [190, 153, 153],  # 4: fence - light brown
-    [153, 153, 153],  # 5: pole - gray
-    [250, 170, 30],  # 6: traffic light - orange
-    [220, 220, 0],  # 7: traffic sign - yellow
-    [107, 142, 35],  # 8: vegetation - dark green
-    [152, 251, 152],  # 9: terrain - light green
-    [70, 130, 180],  # 10: sky - blue
-    [220, 20, 60],  # 11: person - red
-    [255, 0, 0],  # 12: rider - bright red
-    [0, 0, 142],  # 13: car - dark blue
-    [0, 0, 70],  # 14: truck - navy blue
-    [0, 60, 100],  # 15: bus - dark teal
-    [0, 80, 100],  # 16: train - dark green
-    [0, 0, 230],  # 17: motorcycle - blue
-    [119, 11, 32]  # 18: bicycle - dark red
-]
-
-
-def prepare_folders(city, path=""):
-    dir_path = os.path.join(path, "results", city, "images")
+def prepare_folders(city, path):
+    dir_path = os.path.join(path, "results", city, "gvi")
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
-        
-    dir_path = os.path.join(path, "results", city, "final_images")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-        
-    dir_path = os.path.join(path, "results", city, "segments")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-        
-    dir_path = os.path.join(path, "results", city, "pickles")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-
-    dir_path = os.path.join(path, "results", city, "final_pickles")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-
-
-def save_files(image_id, segmentation, images, pickles, city, path=""):
-    # Save original image 
-    dir_path = os.path.join(path, "results", city, "images")
-    img_path = os.path.join(dir_path, "{}.jpg".format(image_id))
-    image.save(img_path)
-
-    color_seg = np.zeros((segmentation.shape[0], segmentation.shape[1], 3), dtype=np.uint8) # height, width, 3
-    palette = np.array(color_palette)
-    for label, color in enumerate(palette):
-        color_seg[segmentation == label, :] = color
     
-    # Show image + mask
-    img = np.array(image) * 0.4 + color_seg * 0.6
-    img = img.astype(np.uint8)
-
-    # Save final images
-    dir_path = os.path.join(path, "results", city, "final_images")
-    for index, image in enumerate(images):
-        img_path = os.path.join(dir_path, "{}_{}.jpg".format(image_id, index))
-        image.save(img_path)
-    
-    # Convert numpy array to PIL Image and save masked image
-    pil_img = Image.fromarray(img)
-    dir_path = os.path.join(path, "results", city, "segments")
-    img_path = os.path.join(dir_path, "{}.png".format(image_id))
-    pil_img.save(img_path)
-
-    # Save segmentation array as a pickle file
-    dir_path = os.path.join(path, "results", city, "pickles")
-    pickle_path = os.path.join(dir_path, "{}.pkl".format(image_id))
-    with open(pickle_path, 'wb') as f:
-        pickle.dump(segmentation, f)
-    
-    # Save final segmentation arrays as a pickle file
-    dir_path = os.path.join(path, "results", city, "final_pickles")
-    for index, pick in enumerate(pickles):
-        pickle_path = os.path.join(dir_path, "{}_{}.pkl".format(image_id, index))
-        with open(pickle_path, 'wb') as f:
-            pickle.dump(pick, f)
-    
-    return pickle_path
+    dir_path = os.path.join(path, "results", city, "points")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
 
 
 def get_models():
@@ -233,7 +152,7 @@ def crop_panoramic_images(original_width, image, segmentation, road_centre):
         images.append(cropped_image)
         pickles.append(cropped_segmentation)
 
-    return images, pickles
+    return pickles
 
 
 def get_GVI(segmentations):
@@ -277,9 +196,8 @@ def process_images(image_url, is_panoramic, processor, model):
 
         if len(road_centre) > 0:
             if is_panoramic:
-                images, pickles = crop_panoramic_images(width, image, segmentation_road, road_centre)
+                pickles = crop_panoramic_images(width, image, segmentation_road, road_centre)
             else:
-                images = [image]
                 pickles = [segmentation]
         
             # Now we can get the Green View Index
@@ -292,33 +210,8 @@ def process_images(image_url, is_panoramic, processor, model):
         return [None, None, True, True]
 
 
-def get_gvi_per_buffer(buffered_points, gvi_per_point):
-    joined = gpd.sjoin(gvi_per_point, buffered_points.set_geometry('buffer'), how='inner', predicate='within')
-
-    # Group the points by buffer
-    grouped = joined.groupby('index_right')
-
-    # Convert 'grouped' to a DataFrame
-    grouped_df = grouped.apply(lambda x: x.reset_index(drop=True))
-    grouped_df = grouped_df[["geometry_left", "GVI", "is_panoramic", "missing"]].reset_index()
-    # Convert grouped_df to a GeoDataFrame
-    grouped_gdf = gpd.GeoDataFrame(grouped_df, geometry='geometry_left')
-
-    # Calculate the average 'gvi' for each group
-    avg_gvi = grouped['GVI'].mean().reset_index()
-    point_count = grouped['GVI'].count().reset_index(name='Point_Count')
-
-    # Merge with the buffered_points dataframe to get the buffer geometries
-    result = avg_gvi.merge(buffered_points, left_on='index_right', right_index=True)
-    result = result.merge(point_count, on='index_right')
-    # Convert the result to a GeoDataFrame
-    result = gpd.GeoDataFrame(result[['geometry', 'GVI', 'Point_Count']])
-
-    return result, grouped_gdf
-
-
 # Download images
-def download_image(geometry, image_metadata, access_token, processor, model):
+def download_image(id, geometry, image_metadata, access_token, processor, model):
     header = {'Authorization': 'OAuth {}'.format(access_token)}
 
     image_id = image_metadata["properties"]["id"]
@@ -330,67 +223,57 @@ def download_image(geometry, image_metadata, access_token, processor, model):
     image_url = data["thumb_original_url"]
 
     result = process_images(image_url, is_panoramic, processor, model)
-    result.insert(0, geometry)
+    result.insert(0, geometry.y)
+    result.insert(0, geometry.x)
+    result.insert(0, id)
 
     return result
 
 
-def write_to_csv(csv_writer, row):
-    # Acquire the lock before writing to the CSV file
-    csv_lock.acquire()
-    csv_writer.writerow(row)
-    # Release the lock after writing is complete
-    csv_lock.release()
+def process_data(index, data_part, processor, model, access_token, max_workers, city, file_name):
+    # Create a lock object
+    lock = threading.Lock()
 
-
-def process_data(index, data_part, processor, model, access_token, max_workers, city):
-    
     results = []
 
-    if city:
-        csv_file = 'gvi-points.csv'
-        dir_path = os.path.join("results", city, "gvi")
-        csv_path = os.path.join(dir_path, csv_file)
+    csv_file = f"gvi-points-{file_name}.csv"
+    dir_path = os.path.join("results", city, "gvi")
+    csv_path = os.path.join(dir_path, csv_file)
 
-        # Check if the CSV file exists
-        file_exists = os.path.exists(csv_path)
+    # Check if the CSV file exists
+    file_exists = os.path.exists(csv_path)
+    mode = 'a' if file_exists else 'w'
 
-        # Open the CSV file in append mode with newline=''
-        with open(csv_path, 'a', newline='') as csvfile:
-            # Create a CSV writer object
-            writer = csv.writer(csvfile)
+    # Open the CSV file in append mode with newline=''
+    with open(csv_path, mode, newline='') as csvfile:
+        # Create a CSV writer object
+        writer = csv.writer(csvfile)
 
-            # Write the header row if the file is newly created
-            if not file_exists:
-                writer.writerow(["Image ID", "GVI", "is_panoramic", "missing", "error"])
+        # Write the header row if the file is newly created
+        if not file_exists:
+            writer.writerow(["id", "x", "y", "GVI", "is_panoramic", "missing", "error"])
               
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = []
-                for _, row in data_part.iterrows():
-                    feature = row["feature"]
-                    geometry = row["geometry"]
-                    futures.append(executor.submit(download_image, geometry, feature, access_token, processor, model))
-        
-                for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
-                    image_result = future.result()
-                    # Write the new row to the CSV file
-                    writer.writerow(image_result)
-
-                    results.append(image_result)
-                    
-    
-            return results
-    
-    else:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
             for _, row in data_part.iterrows():
-                feature = row["feature"]
                 geometry = row["geometry"]
-                futures.append(executor.submit(download_image, geometry, feature, access_token, processor, model))
+                feature = row["feature"]
+                id = row["id"]
+                feature = json.loads(feature) if isinstance(feature, str) else feature
+                futures.append(executor.submit(download_image, id, geometry, feature, access_token, processor, model))
         
             for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
                 image_result = future.result()
+                # Acquire the lock before writing to the CSV file
+                lock.acquire()
+                try:
+                    # Write the new row to the CSV file
+                    writer.writerow(image_result)
+                    results.append(image_result)
+                finally:
+                    # Release the lock
+                    lock.release()
+                    
+
                 results.append(image_result)
-    
         return results

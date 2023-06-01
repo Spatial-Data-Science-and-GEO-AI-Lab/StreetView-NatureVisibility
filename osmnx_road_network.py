@@ -1,9 +1,8 @@
 # Libraries for working with maps and geospatial data
 from vt2geojson.tools import vt_bytes_to_geojson
-from shapely.geometry import Point, MultiPoint
+from shapely.geometry import Point
 from scipy.spatial import cKDTree
 import geopandas as gpd
-from geopandas.tools import sjoin
 import osmnx as ox
 import mercantile
 
@@ -24,28 +23,6 @@ def get_road_network(city):
 
     # Convert the projected graph to a GeoDataFrame
     _, edges = ox.graph_to_gdfs(G_proj)    
-
-    return edges
-
-
-def get_road_network_with_points(buffered_points):
-    # Get the bounds (bounding box) of the buffered points
-    bounding_box = buffered_points.bounds
-
-    # Unpack the bounds into separate variables
-    min_x = bounding_box['minx'].min()
-    min_y = bounding_box['miny'].min()
-    max_x = bounding_box['maxx'].max()
-    max_y = bounding_box['maxy'].max()
-
-    # Get the road network within the bounding box
-    G = ox.graph_from_bbox(max_y, min_y, max_x, min_x, network_type='drive', simplify=True)
-
-    #Project the graph from latitude-longitude coordinates to a local projection (in meters)
-    G_proj = ox.project_graph(G)
-
-    # Convert the projected graph to a GeoDataFrame
-    _, edges = ox.graph_to_gdfs(G_proj)
 
     return edges
 
@@ -80,17 +57,11 @@ def select_points_on_road_network(roads, distance=50):
     # Set the same CRS as the road dataframes for the points dataframe
     gdf_points.set_crs(roads.crs, inplace=True)
 
+    # Drop duplicate rows based on the geometry column
+    gdf_points = gdf_points.drop_duplicates(subset=['geometry'])
+    gdf_points = gdf_points.reset_index(drop=True)
+
     return gdf_points
-
-
-def select_points_within_buffers(buffered_points, road_points):
-    points_within_buffers = sjoin(road_points, buffered_points.set_geometry('buffer'), how='inner', predicate='within')
-
-    # Get the unique points that fall within any buffer
-    unique_points = points_within_buffers['geometry_left'].unique()
-
-    # Create a new GeoDataFrame with the points that fall within any buffer
-    return gpd.GeoDataFrame(geometry=[Point(p.x, p.y) for p in unique_points], crs=buffered_points.crs)
 
 
 # This function extracts the features for a given tile
@@ -139,5 +110,11 @@ def get_features_on_points(points, access_token, zoom=14):
 
     # Convert results to geodataframe
     points['tile'] = points['tile'].astype(str)
+
+    # Save the current index as a column
+    points['id'] = points.index
+
+    # Reset the index
+    points = points.reset_index(drop=True)
     
     return points
