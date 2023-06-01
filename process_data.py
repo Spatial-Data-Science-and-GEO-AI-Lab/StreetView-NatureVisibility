@@ -264,16 +264,13 @@ def process_data(index, data_part, processor, model, access_token, max_workers, 
             for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
                 image_result = future.result()
                 # Acquire the lock before writing to the CSV file
-                lock.acquire()
-                try:
-                    # Write the new row to the CSV file
-                    writer.writerow(image_result)
-                    results.append(image_result)
-                except Exception as e:
-                    print(f"Exception occurred for row: {str(e)}")
-                finally:
-                    # Release the lock
-                    lock.release()
-                    
+                with lock:
+                    try:
+                        # Write the new row to the CSV file
+                        writer.writerow(image_result)
+                        results.append(image_result)
+                    except Exception as e:
+                        print(f"Exception occurred for row: {str(e)}")
+                        
                 results.append(image_result)
         return results

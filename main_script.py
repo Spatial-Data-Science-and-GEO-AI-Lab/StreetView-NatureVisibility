@@ -8,31 +8,31 @@ import geopandas as gpd
 import numpy as np
 from datetime import timedelta
 from time import time
-import threading
 import sys
 
 
 def download_images_for_points(gdf, access_token, max_workers, city, file_name):
     processor, model = get_models()
     
-    lock = threading.Lock()
+    with mp.Manager() as manager:
+        lock = manager.Lock()
     
-    images_results = []
+        images_results = []
 
-    # Split the dataset into parts
-    num_processes = mp.cpu_count() # Get the number of CPU cores
-    data_parts = np.array_split(gdf, num_processes) # Split the dataset
-    
-    with mp.get_context("spawn").Pool(processes=num_processes) as pool:
-        # Apply the function to each part of the dataset using multiprocessing
-        results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers, lock, city, file_name) for index, data_part in enumerate(data_parts)])
+        # Split the dataset into parts
+        num_processes = mp.cpu_count() # Get the number of CPU cores
+        data_parts = np.array_split(gdf, num_processes) # Split the dataset
+        
+        with mp.get_context("spawn").Pool(processes=num_processes) as pool:
+            # Apply the function to each part of the dataset using multiprocessing
+            results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers, lock, city, file_name) for index, data_part in enumerate(data_parts)])
 
-        # Combine the results from all parts
-        images_results = [result for part_result in results for result in part_result]
+            # Combine the results from all parts
+            images_results = [result for part_result in results for result in part_result]
 
-        # Close the pool to release resources
-        pool.close()
-        pool.join()
+            # Close the pool to release resources
+            pool.close()
+            pool.join()
 
     return images_results
 
