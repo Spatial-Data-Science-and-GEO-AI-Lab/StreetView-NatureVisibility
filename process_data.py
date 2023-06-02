@@ -5,16 +5,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from scipy.signal import find_peaks
-import geopandas as gpd
+import pandas as pd
 import torch
 
 from PIL import Image
 from tqdm import tqdm
 import numpy as np
 import requests
-import json
+import threading
 
-import csv
 
 def prepare_folders(city, path):
     dir_path = os.path.join(path, "results", city, "gvi")
@@ -25,6 +24,10 @@ def prepare_folders(city, path):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
+    dir_path = os.path.join(path, "results", city, "roads")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    
 
 def get_models():
     processor = AutoImageProcessor.from_pretrained("facebook/mask2former-swin-large-cityscapes-semantic")
@@ -209,18 +212,20 @@ def process_images(image_url, is_panoramic, processor, model):
 
 
 # Download images
-def download_image(id, geometry, image_metadata, access_token, processor, model):
-    header = {'Authorization': 'OAuth {}'.format(access_token)}
+def download_image(id, geometry, image_id, is_panoramic, access_token, processor, model):
+    if not pd.isna(image_id):
+        header = {'Authorization': 'OAuth {}'.format(access_token)}
+        
+        url = 'https://graph.mapillary.com/{}?fields=thumb_original_url'.format(image_id)
+        response = requests.get(url, headers=header)
+        data = response.json()
+        image_url = data["thumb_original_url"]
 
-    image_id = image_metadata["properties"]["id"]
-    is_panoramic = image_metadata["properties"]["is_pano"]
-    
-    url = 'https://graph.mapillary.com/{}?fields=thumb_original_url'.format(image_id)
-    response = requests.get(url, headers=header)
-    data = response.json()
-    image_url = data["thumb_original_url"]
+        result = process_images(image_url, is_panoramic, processor, model)
+    else:
+        # The point doesn't have an image, then we set the missing value to true
+        result = [None, None, True, False]
 
-    result = process_images(image_url, is_panoramic, processor, model)
     result.insert(0, geometry.y)
     result.insert(0, geometry.x)
     result.insert(0, id)
@@ -228,49 +233,24 @@ def download_image(id, geometry, image_metadata, access_token, processor, model)
     return result
 
 
-def process_data(index, data_part, processor, model, access_token, max_workers, lock, city, file_name):
+def process_data(index, data_part, processor, model, access_token, max_workers):
     # Create a lock object
     results = []
-
-    csv_file = f"gvi-points-{file_name}.csv"
-    dir_path = os.path.join("results", city, "gvi")
-    csv_path = os.path.join(dir_path, csv_file)
-
-    # Check if the CSV file exists
-    file_exists = os.path.exists(csv_path)
-    mode = 'a' if file_exists else 'w'
-
-    # Open the CSV file in append mode with newline=''
-    with open(csv_path, mode, newline='') as csvfile:
-        # Create a CSV writer object
-        writer = csv.writer(csvfile)
-
-        # Write the header row if the file is newly created
-        if not file_exists:
-            writer.writerow(["id", "x", "y", "GVI", "is_panoramic", "missing", "error"])
-              
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = []
-            for _, row in data_part.iterrows():
-                try:
-                    geometry = row["geometry"]
-                    feature = row["feature"]
-                    id = row["id"]
-                    feature = json.loads(feature) if isinstance(feature, str) else feature
-                    futures.append(executor.submit(download_image, id, geometry, feature, access_token, processor, model))
-                except Exception as e:
-                    print(f"Exception occurred for row {row['id']}: {str(e)}")
+    lock = threading.Lock()
+                  
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for _, row in data_part.iterrows():
+            try:
+                futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
+            except Exception as e:
+                print(f"Exception occurred for row {row['id']}: {str(e)}")
         
-            for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
-                image_result = future.result()
-                # Acquire the lock before writing to the CSV file
-                with lock:
-                    try:
-                        # Write the new row to the CSV file
-                        writer.writerow(image_result)
-                        results.append(image_result)
-                    except Exception as e:
-                        print(f"Exception occurred for row: {str(e)}")
-                        
+        for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
+            image_result = future.result()
+
+            # Acquire the lock before appending to results
+            with lock:
                 results.append(image_result)
-        return results
+            
+    return results
