@@ -85,9 +85,6 @@ def get_features_for_tile(tile, access_token):
 
 
 def get_features_on_points(points, access_token, max_distance=50, zoom=14):
-    # Transform the coordinate reference system to EPSG 4326
-    points.to_crs(epsg=4326, inplace=True)
-
     # Add a new column to gdf_points that contains the tile coordinates for each point
     points["tile"] = [mercantile.tile(x, y, zoom) for x, y in zip(points.geometry.x, points.geometry.y)]
 
@@ -135,8 +132,11 @@ def get_features_on_points(points, access_token, max_distance=50, zoom=14):
     points["distance"] = closest_distances
 
     # Store image id and is panoramic information as part of the dataframe
-    points["image_id"] = points.apply(lambda row: str(row["feature"]["properties"]["id"]) if row["feature"] else None, axis=1)
+    points["image_id"] = points.apply(lambda row: str(row["feature"]["properties"]["id"]) if row["feature"] else "", axis=1)
+    points["image_id"] = points["image_id"].astype(str)
+    
     points["is_panoramic"] = points.apply(lambda row: bool(row["feature"]["properties"]["is_pano"]) if row["feature"] else None, axis=1)
+    points["is_panoramic"] = points["is_panoramic"].astype(bool)
 
     # Convert results to geodataframe
     points["tile"] = points["tile"].astype(str)
@@ -146,5 +146,8 @@ def get_features_on_points(points, access_token, max_distance=50, zoom=14):
 
     # Reset the index
     points = points.reset_index(drop=True)
+
+    # Transform the coordinate reference system to EPSG 4326
+    points.to_crs(epsg=4326, inplace=True)
     
     return points

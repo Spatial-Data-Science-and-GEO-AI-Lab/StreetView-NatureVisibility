@@ -213,15 +213,19 @@ def process_images(image_url, is_panoramic, processor, model):
 
 # Download images
 def download_image(id, geometry, image_id, is_panoramic, access_token, processor, model):
-    if not pd.isna(image_id):
-        header = {'Authorization': 'OAuth {}'.format(access_token)}
+    if image_id:
+        try:
+            header = {'Authorization': 'OAuth {}'.format(access_token)}
         
-        url = 'https://graph.mapillary.com/{}?fields=thumb_original_url'.format(image_id)
-        response = requests.get(url, headers=header)
-        data = response.json()
-        image_url = data["thumb_original_url"]
+            url = 'https://graph.mapillary.com/{}?fields=thumb_original_url'.format(image_id)
+            response = requests.get(url, headers=header)
+            data = response.json()
+            image_url = data["thumb_original_url"]
 
-        result = process_images(image_url, is_panoramic, processor, model)
+            result = process_images(image_url, is_panoramic, processor, model)
+        except:
+            # There was an error during the downloading of the image
+            result = [None, None, True, True]
     else:
         # The point doesn't have an image, then we set the missing value to true
         result = [None, None, True, False]

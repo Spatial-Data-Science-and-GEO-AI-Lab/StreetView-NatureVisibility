@@ -44,6 +44,24 @@ def get_road_network_with_points(buffered_points):
     # Get the road network within the bounding box
     G = ox.graph_from_bbox(max_y, min_y, max_x, min_x, network_type='drive', simplify=True)
 
+    # Create a set to store unique road identifiers
+    unique_roads = set()
+    # Create a new graph to store the simplified road network
+    G_simplified = G.copy()
+
+    # Iterate over each road segment
+    for u, v, key, data in G.edges(keys=True, data=True):
+        # Check if the road segment is a duplicate
+        if (v, u) in unique_roads:
+            # Remove the duplicate road segment
+            G_simplified.remove_edge(u, v, key)
+        else:
+            # Add the road segment to the set of unique roads
+            unique_roads.add((u, v))
+    
+    # Update the graph with the simplified road network
+    G = G_simplified
+    
     #Project the graph from latitude-longitude coordinates to a local projection (in meters)
     G_proj = ox.project_graph(G)
 
@@ -53,6 +71,36 @@ def get_road_network_with_points(buffered_points):
     return edges
 
 
+# Get a list of points over the road map with a N distance between them
+def select_points_on_road_network(roads, N=50):
+    points = []
+    # Iterate over each road
+    
+    for row in roads.itertuples(index=True, name='Road'):
+        # Get the LineString object from the geometry
+        linestring = row.geometry
+
+        # Calculate the distance along the linestring and create points every 50 meters
+        for distance in range(0, int(linestring.length), N):
+            # Get the point on the road at the current position
+            point = linestring.interpolate(distance)
+
+            # Add the curent point to the list of points
+            points.append(point)
+    
+    # Convert the list of points to a GeoDataFrame
+    gdf_points = gpd.GeoDataFrame(geometry=points)
+
+    # Set the same CRS as the road dataframes for the points dataframe
+    gdf_points.set_crs(roads.crs, inplace=True)
+
+    # Drop duplicate rows based on the geometry column
+    gdf_points = gdf_points.drop_duplicates(subset=['geometry'])
+    gdf_points = gdf_points.reset_index(drop=True)
+
+    return gdf_points
+
+
 def get_features_for_tile(tile, access_token):
     tile_url = f"https://tiles.mapillary.com/maps/vtp/mly1_public/2/{tile.z}/{tile.x}/{tile.y}?access_token={access_token}"
     response = requests.get(tile_url)
@@ -60,15 +108,12 @@ def get_features_for_tile(tile, access_token):
     return [tile, result]
 
 
-def get_features_on_points(points, access_token, zoom=14):
-    # Transform the coordinate reference system to EPSG 4326
-    points.to_crs(epsg=4326, inplace=True)
-
+def get_features_on_points(points, access_token, max_distance=50, zoom=14):
     # Add a new column to gdf_points that contains the tile coordinates for each point
-    points['tile'] = [mercantile.tile(x, y, zoom) for x, y in zip(points.geometry.x, points.geometry.y)]
+    points["tile"] = [mercantile.tile(x, y, zoom) for x, y in zip(points.geometry.x, points.geometry.y)]
 
     # Group the points by their corresponding tiles
-    groups = points.groupby('tile')
+    groups = points.groupby("tile")
 
     # Download the tiles and extract the features for each group
     features = []
@@ -86,58 +131,56 @@ def get_features_on_points(points, access_token, zoom=14):
     pd_features = pd.DataFrame(features, columns=["tile", "features"])
 
     # Compute distances between each feature and all the points in gdf_points
-    feature_points = pd.DataFrame(
+    feature_points = gpd.GeoDataFrame(
         [(Point(f["geometry"]["coordinates"]), f) for row in pd_features["features"] for f in row["features"]],
-        columns=["geometry", "feature"])
-    feature_tree = cKDTree(feature_points["geometry"].apply(lambda p: [p.x, p.y]).tolist())
-    _, indices = feature_tree.query(points["geometry"].apply(lambda p: [p.x, p.y]).tolist())
+        columns=["geometry", "feature"],
+        geometry="geometry",
+        crs=4326
+    )
 
-    # Select the closest feature for each point
-    points["feature"] = feature_points.loc[indices, "feature"].tolist()
+    # Transform from EPSG:4326 (world °) to EPSG:32662 (world meters)
+    feature_points.to_crs(epsg=32634, inplace=True)
+    points.to_crs(epsg=32634, inplace=True)
+
+    feature_tree = cKDTree(feature_points["geometry"].apply(lambda p: [p.x, p.y]).tolist())
+    distances, indices = feature_tree.query(points["geometry"].apply(lambda p: [p.x, p.y]).tolist(), k=1, distance_upper_bound=max_distance)
+
+    # Create a list to store the closest features and distances
+    closest_features = [feature_points.loc[i, "feature"] if np.isfinite(distances[idx]) else None for idx, i in enumerate(indices)]
+    closest_distances = [distances[idx] if np.isfinite(distances[idx]) else None for idx in range(len(distances))]
+
+    # Store the closest feature for each point in the "feature" column of the points DataFrame
+    points["feature"] = closest_features
+
+    # Store the distances as a new column in points
+    points["distance"] = closest_distances
+
+    # Store image id and is panoramic information as part of the dataframe
+    points["image_id"] = points.apply(lambda row: str(row["feature"]["properties"]["id"]) if row["feature"] else "", axis=1)
+    points["image_id"] = points["image_id"].astype(str)
+    
+    points["is_panoramic"] = points.apply(lambda row: bool(row["feature"]["properties"]["is_pano"]) if row["feature"] else None, axis=1)
+    points["is_panoramic"] = points["is_panoramic"].astype(bool)
 
     # Convert results to geodataframe
-    points['tile'] = points['tile'].astype(str)
+    points["tile"] = points["tile"].astype(str)
+
+    # Save the current index as a column
+    points["id"] = points.index
+
+    # Reset the index
+    points = points.reset_index(drop=True)
+
+    # Transform the coordinate reference system to EPSG 4326
+    points.to_crs(epsg=4326, inplace=True)
     
     return points
 
 
-# Get a list of points over the road map with a N distance between them
-def select_points_on_road_network(roads, distance=50):
-    # Initialize a list to store the points
-    points = []
-
-    # Loop through each road in the road network graph
-    for road in roads.geometry:
-        # Calculate the total length of the road
-        road_length = road.length
-
-        # Start at the beginning of the road
-        current_position = 0
-
-        # Loop through the road, adding points every 50 meters
-        while current_position < road_length:
-            # Get the point on the road at the current position
-            current_point = road.interpolate(current_position)
-
-            # Add the curent point to the list of points
-            points.append(current_point)
-
-            # Increment the position by the desired distance
-            current_position += distance
-    
-    # Convert the list of points to a GeoDataFrame
-    gdf_points = gpd.GeoDataFrame(geometry=points)
-
-    # Set the same CRS as the road dataframes for the points dataframe
-    gdf_points.set_crs(roads.crs, inplace=True)
-
-    # Drop duplicate rows based on the geometry column
-    gdf_points = gdf_points.drop_duplicates(subset=['geometry'])
-
-    return gdf_points
-
-
 def select_points_within_buffers(buffered_points, road_points):
+    buffered_points.to_crs(epsg=4326, inplace=True)
+    road_points.to_crs(epsg=4326, inplace=True)
+    
     points_within_buffers = sjoin(road_points, buffered_points.set_geometry('buffer'), how='inner', predicate='within')
 
     # Get the unique points that fall within any buffer
@@ -329,33 +372,37 @@ def process_images(image_url, is_panoramic, processor, model):
         return [None, None, True, True]
     
 
-def download_image(geometry, image_metadata, access_token, processor, model):
-    header = {'Authorization': 'OAuth {}'.format(access_token)}
+def download_image(id, geometry, image_id, is_panoramic, access_token, processor, model):
+    if image_id:
+        try:
+            header = {'Authorization': 'OAuth {}'.format(access_token)}
+        
+            url = 'https://graph.mapillary.com/{}?fields=thumb_original_url'.format(image_id)
+            response = requests.get(url, headers=header)
+            data = response.json()
+            image_url = data["thumb_original_url"]
 
-    image_id = image_metadata["properties"]["id"]
-    is_panoramic = image_metadata["properties"]["is_pano"]
+            result = process_images(image_url, is_panoramic, processor, model)
+        except:
+            # There was an error during the downloading of the image
+            result = [None, None, True, True]
+    else:
+        # The point doesn't have an image, then we set the missing value to true
+        result = [None, None, True, False]
     
-    url = 'https://graph.mapillary.com/{}?fields=thumb_original_url'.format(image_id)
-    response = requests.get(url, headers=header)
-    data = response.json()
-    image_url = data["thumb_original_url"]
-
-    result = process_images(image_url, is_panoramic, processor, model)
     result.insert(0, geometry)
+    result.insert(0, id)
 
     return result
 
 
 def process_data(index, data_part, processor, model, access_token, max_workers):
-    
     results = []
-
+    
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for _, row in data_part.iterrows():
-            feature = row["feature"]
-            geometry = row["geometry"]
-            futures.append(executor.submit(download_image, geometry, feature, access_token, processor, model))
+            futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
         
         for future in tqdm(as_completed(futures), total=len(futures), desc=f"Processing images (Process {index})"):
             image_result = future.result()
@@ -384,7 +431,7 @@ def download_images_for_points(gdf, access_token, max_workers=1):
         pool.close()
         pool.join()
     
-    results = gpd.GeoDataFrame(images_results, columns=["geometry", "GVI", "is_panoramic", "missing", "error"], crs=4326)
+    results = gpd.GeoDataFrame(images_results, columns=["id", "geometry", "GVI", "is_panoramic", "missing", "error"], crs=4326)
 
     return results
 
