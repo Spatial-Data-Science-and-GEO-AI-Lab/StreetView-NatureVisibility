@@ -31,7 +31,10 @@ def prepare_folders(city, path):
 
 def get_models():
     processor = AutoImageProcessor.from_pretrained("facebook/mask2former-swin-large-cityscapes-semantic")
+    # setting device on GPU if available, else CPU
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = Mask2FormerForUniversalSegmentation.from_pretrained("facebook/mask2former-swin-large-cityscapes-semantic")
+    model = model.to(device)
     return processor, model
 
 
@@ -40,11 +43,14 @@ def segment_images(image, processor, model):
     
     # Forward pass
     with torch.no_grad():
-        outputs = model(**inputs)
-    
-    # You can pass them to processor for postprocessing
-    segmentation = processor.post_process_semantic_segmentation(outputs, target_sizes=[image.size[::-1]])[0]
-
+        if torch.cuda.is_available():
+            inputs = {k: v.to('cuda') for k, v in inputs.items()}
+            outputs = model(**inputs)
+            segmentation = processor.post_process_semantic_segmentation(outputs, target_sizes=[image.size[::-1]])[0].to('cpu')
+        else:
+            outputs = model(**inputs)
+            segmentation = processor.post_process_semantic_segmentation(outputs, target_sizes=[image.size[::-1]])[0]
+            
     return segmentation
 
 
