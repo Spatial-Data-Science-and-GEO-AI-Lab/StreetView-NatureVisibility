@@ -1,18 +1,14 @@
 import os
 os.environ['USE_PYGEOS'] = '0'
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from scipy.signal import find_peaks
-import pandas as pd
 import torch
 
 from PIL import Image
-from tqdm import tqdm
 import numpy as np
 import requests
-import threading
+
 
 
 def prepare_folders(city, path):
@@ -241,26 +237,3 @@ def download_image(id, geometry, image_id, is_panoramic, access_token, processor
     result.insert(0, id)
 
     return result
-
-
-def process_data(index, data_part, processor, model, access_token, max_workers):
-    # Create a lock object
-    results = []
-    lock = threading.Lock()
-                  
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for _, row in data_part.iterrows():
-            try:
-                futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
-            except Exception as e:
-                print(f"Exception occurred for row {row['id']}: {str(e)}")
-        
-        for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images (Process {index})"):
-            image_result = future.result()
-
-            # Acquire the lock before appending to results
-            with lock:
-                results.append(image_result)
-            
-    return results

@@ -1,13 +1,14 @@
 import os
 os.environ['USE_PYGEOS'] = '0'
 
-from process_data import process_data, get_models, prepare_folders
+from process_data import download_image, get_models, prepare_folders
 from osmnx_road_network import get_road_network, select_points_on_road_network, get_features_on_points
-import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import geopandas as gpd
-import numpy as np
 from datetime import timedelta
 from time import time
+from tqdm import tqdm
+import threading
 import csv
 import sys
 
@@ -22,6 +23,10 @@ def download_images_for_points(gdf, access_token, max_workers, city, file_name):
     # Check if the CSV file exists
     file_exists = os.path.exists(csv_path)
     mode = 'a' if file_exists else 'w'
+
+    # Create a lock object
+    results = []
+    lock = threading.Lock()
     
     # Open the CSV file in append mode with newline=''
     with open(csv_path, mode, newline='') as csvfile:
@@ -31,28 +36,25 @@ def download_images_for_points(gdf, access_token, max_workers, city, file_name):
         # Write the header row if the file is newly created
         if not file_exists:
             writer.writerow(["id", "x", "y", "GVI", "is_panoramic", "missing", "error"])
-    
-        images_results = []
-
-        # Split the dataset into parts
-        num_processes = mp.cpu_count() # Get the number of CPU cores
-        data_parts = np.array_split(gdf, num_processes) # Split the dataset
         
-        with mp.get_context("spawn").Pool(processes=num_processes) as pool:
-            # Apply the function to each part of the dataset using multiprocessing
-            results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers) for index, data_part in enumerate(data_parts)])
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
 
-            # Combine the results from all parts
-            images_results = [result for part_result in results for result in part_result]
+            for _, row in gdf.iterrows():
+                try:
+                    futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
+                except Exception as e:
+                    print(f"Exception occurred for row {row['id']}: {str(e)}")
+            
+            for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images"):
+                image_result = future.result()
 
-            for row in images_results:
-                writer.writerow(row)
+                # Acquire the lock before appending to results
+                with lock:
+                    results.append(image_result)
+                    writer.writerow(image_result)
 
-            # Close the pool to release resources
-            pool.close()
-            pool.join()
-
-    return images_results
+    return results
 
 
 if __name__ == "__main__":
