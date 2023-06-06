@@ -4,10 +4,11 @@ os.environ['USE_PYGEOS'] = '0'
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from scipy.signal import find_peaks
 
-import multiprocessing as mp
 import geopandas as gpd
 import pandas as pd
 import numpy as np
+import threading
+import csv
 import torch
 
 from vt2geojson.tools import vt_bytes_to_geojson
@@ -194,8 +195,12 @@ def select_points_within_buffers(buffered_points, road_points):
 """ CODE TO PROCESS IMAGES """
 def get_models():
     processor = AutoImageProcessor.from_pretrained("facebook/mask2former-swin-large-cityscapes-semantic")
+    # setting device on GPU if available, else CPU
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = Mask2FormerForUniversalSegmentation.from_pretrained("facebook/mask2former-swin-large-cityscapes-semantic")
+    model = model.to(device)
     return processor, model
+
 
 
 def segment_images(image, processor, model):
@@ -203,11 +208,14 @@ def segment_images(image, processor, model):
     
     # Forward pass
     with torch.no_grad():
-        outputs = model(**inputs)
-    
-    # You can pass them to processor for postprocessing
-    segmentation = processor.post_process_semantic_segmentation(outputs, target_sizes=[image.size[::-1]])[0]
-
+        if torch.cuda.is_available():
+            inputs = {k: v.to('cuda') for k, v in inputs.items()}
+            outputs = model(**inputs)
+            segmentation = processor.post_process_semantic_segmentation(outputs, target_sizes=[image.size[::-1]])[0].to('cpu')
+        else:
+            outputs = model(**inputs)
+            segmentation = processor.post_process_semantic_segmentation(outputs, target_sizes=[image.size[::-1]])[0]
+            
     return segmentation
 
 
@@ -396,44 +404,51 @@ def download_image(id, geometry, image_id, is_panoramic, access_token, processor
     return result
 
 
-def process_data(index, data_part, processor, model, access_token, max_workers):
-    results = []
-    
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for _, row in data_part.iterrows():
-            futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
-        
-        for future in tqdm(as_completed(futures), total=len(futures), desc=f"Processing images (Process {index})"):
-            image_result = future.result()
-            results.append(image_result)
-    
-    return results
-
-
-def download_images_for_points(gdf, access_token, max_workers=1):
+def download_images_for_points(gdf, access_token, max_workers=4):
     processor, model = get_models()
     
-    images_results = []
+    # We will use this csv file to store the results every time a process finishes. If the script stops working for whatever reason, the results obtained until that point will be saved
+    csv_file = f"gvi-points.csv"
+    csv_path = os.path.join("results", csv_file)
 
-    # Split the dataset into parts
-    num_processes = mp.cpu_count() # Get the number of CPU cores
-    data_parts = np.array_split(gdf, num_processes) # Split the dataset
+    # Check if the CSV file exists
+    file_exists = os.path.exists(csv_path)
+    mode = 'a' if file_exists else 'w'
+
+    # Create a lock object
+    results = []
+    lock = threading.Lock()
     
-    with mp.get_context("spawn").Pool(processes=num_processes) as pool:
-        # Apply the function to each part of the dataset using multiprocessing
-        results = pool.starmap(process_data, [(index, data_part, processor, model, access_token, max_workers) for index, data_part in enumerate(data_parts)])
+    # Open the CSV file in append mode with newline=''
+    with open(csv_path, mode, newline='') as csvfile:
+        # Create a CSV writer object
+        writer = csv.writer(csvfile)
 
-        # Combine the results from all parts
-        images_results = [result for part_result in results for result in part_result]
+        # Write the header row if the file is newly created
+        if not file_exists:
+            writer.writerow(["id", "x", "y", "GVI", "is_panoramic", "missing", "error"])
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
 
-        # Close the pool to release resources
-        pool.close()
-        pool.join()
+            for _, row in gdf.iterrows():
+                try:
+                    futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
+                except Exception as e:
+                    print(f"Exception occurred for row {row['id']}: {str(e)}")
+            
+            for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images"):
+                image_result = future.result()
+
+                # Acquire the lock before appending to results
+                with lock:
+                    results.append(image_result)
+                    writer.writerow(image_result)
+        
+    # Combine the results from all parts
+    final_results = gpd.GeoDataFrame(results, columns=["id", "geometry", "GVI", "is_panoramic", "missing", "error"], crs=4326)
     
-    results = gpd.GeoDataFrame(images_results, columns=["id", "geometry", "GVI", "is_panoramic", "missing", "error"], crs=4326)
-
-    return results
+    return final_results
 
 
 def get_gvi_per_buffer(buffered_points, gvi_per_point):
