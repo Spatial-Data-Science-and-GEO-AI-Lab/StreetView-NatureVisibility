@@ -41,6 +41,7 @@ def get_road_network(city):
     G_proj = ox.project_graph(G)
 
     # Convert the projected graph to a GeoDataFrame
+    # This function projects the graph to the UTM CRS for the UTM zone in which the graph's centroid lies
     _, edges = ox.graph_to_gdfs(G_proj) 
 
     return edges
@@ -78,6 +79,7 @@ def select_points_on_road_network(roads, N=50):
 
 # This function extracts the features for a given tile
 def get_features_for_tile(tile, access_token):
+    # This URL retrieves all the features within the tile. These features are then going to be assigned to each sample point depending on the distance.
     tile_url = f"https://tiles.mapillary.com/maps/vtp/mly1_public/2/{tile.z}/{tile.x}/{tile.y}?access_token={access_token}"
     response = requests.get(tile_url)
     result = vt_bytes_to_geojson(response.content, tile.x, tile.y, tile.z, layer="image")
@@ -85,6 +87,12 @@ def get_features_for_tile(tile, access_token):
 
 
 def get_features_on_points(points, access_token, max_distance=50, zoom=14):
+    # Store the local crs in meters that was assigned by osmnx previously so we can use it to calculate the distances between features and points
+    local_crs = points.crs
+
+    # Set the CRS to 4326 because it is used by Mapillary
+    points.to_crs(crs=4326, inplace=True)
+    
     # Add a new column to gdf_points that contains the tile coordinates for each point
     points["tile"] = [mercantile.tile(x, y, zoom) for x, y in zip(points.geometry.x, points.geometry.y)]
 
@@ -94,6 +102,7 @@ def get_features_on_points(points, access_token, max_distance=50, zoom=14):
     # Download the tiles and extract the features for each group
     features = []
     
+    # To make the process faster the tiles are downloaded using threads
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
 
@@ -114,14 +123,19 @@ def get_features_on_points(points, access_token, max_distance=50, zoom=14):
         crs=4326
     )
 
-    # Transform from EPSG:4326 (world °) to EPSG:32662 (world meters)
-    feature_points.to_crs(epsg=32634, inplace=True)
-    points.to_crs(epsg=32634, inplace=True)
+    # Transform from EPSG:4326 (world °) to the local crs in meters that we got when we projected the roads graph in the previous step
+    feature_points.to_crs(local_crs, inplace=True)
+    points.to_crs(local_crs, inplace=True)
 
+    # Create a KDTree (k-dimensional tree) from the "geometry" coordinates of feature_points
     feature_tree = cKDTree(feature_points["geometry"].apply(lambda p: [p.x, p.y]).tolist())
+    # Use the KDTree to query the nearest neighbors of the points in the "geometry" column of points DataFrame
+    # The query returns the distances and indices of the nearest neighbors
+    # The parameter "k=1" specifies that we want to find the nearest neighbor
+    # The parameter "distance_upper_bound=max_distance" sets a maximum distance for the nearest neighbors
     distances, indices = feature_tree.query(points["geometry"].apply(lambda p: [p.x, p.y]).tolist(), k=1, distance_upper_bound=max_distance)
 
-    # Create a list to store the closest features and distances
+    # Create a list to store the closest features and distances to each point. If there are no images close then set the value of both to None
     closest_features = [feature_points.loc[i, "feature"] if np.isfinite(distances[idx]) else None for idx, i in enumerate(indices)]
     closest_distances = [distances[idx] if np.isfinite(distances[idx]) else None for idx in range(len(distances))]
 
@@ -143,8 +157,6 @@ def get_features_on_points(points, access_token, max_distance=50, zoom=14):
 
     # Save the current index as a column
     points["id"] = points.index
-
-    # Reset the index
     points = points.reset_index(drop=True)
 
     # Transform the coordinate reference system to EPSG 4326
