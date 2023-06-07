@@ -5,10 +5,17 @@ from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from scipy.signal import find_peaks
 import torch
 
-from PIL import Image
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
+import threading
+import csv
+
+
+from PIL import Image, ImageFile
 import numpy as np
 import requests
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 def prepare_folders(city):
     # Create folder for storing GVI results, sample points and road network if they don't exist yet
@@ -131,8 +138,8 @@ def crop_panoramic_images(original_width, image, segmentation, road_centre):
     for centre in road_centre:
         # Wrapped all the way around
         if centre >= w98:
-            xlo = int(centre - w4/2)
-            cropped_image = image.crop((xlo, h4,  xlo+w4, h4 + hFor43))
+            xlo = int((width - centre) - w4/2)
+            cropped_image = image.crop((xlo, h4, xlo + w4, h4 + hFor43))
             cropped_segmentation = segmentation[h4:h4+hFor43, xlo:xlo+w4]
         
         # Image requires assembly of two sides
@@ -180,7 +187,7 @@ def crop_panoramic_images(original_width, image, segmentation, road_centre):
         images.append(cropped_image)
         pickles.append(cropped_segmentation)
 
-    return pickles
+    return images, pickles
 
 
 def get_GVI(segmentations):
@@ -232,20 +239,21 @@ def process_images(image_url, is_panoramic, processor, model):
             # The image is suitable for analysis
             if is_panoramic:
                 # If it's panoramic, crop the image and its segmentation based on the previously found road centers
-                pickles = crop_panoramic_images(width, image, segmentation_road, road_centre)
+                images, pickles = crop_panoramic_images(width, image, segmentation_road, road_centre)
             else:
                 # If it's not panoramic, use the segmentation without any modification
+                images = [image]
                 pickles = [segmentation]
         
             # Calculate the Green View Index (GVI) for the cropped segmentations
             GVI = get_GVI(pickles)
-            return [GVI, is_panoramic, False, False]
+            return images, pickles, [GVI, is_panoramic, False, False]
         else:
             # There are no road centers, so the image is not suitable for analysis
-            return [None, None, True, False]
+            return None, None, [None, None, True, False]
     except:
         # If there was an error while processing the image, set the "error" flag to true and continue with other images
-        return [None, None, True, True]
+        return None, None, [None, None, True, True]
 
 
 # Download images
@@ -267,7 +275,7 @@ def download_image(id, geometry, image_id, is_panoramic, access_token, processor
             image_url = data["thumb_original_url"]
 
             # Process the downloaded image using the provided image URL, is_panoramic flag, processor, and model
-            result = process_images(image_url, is_panoramic, processor, model)
+            _, _, result = process_images(image_url, is_panoramic, processor, model)
         except:
             # An error occurred during the downloading of the image
             result = [None, None, True, True]
@@ -282,3 +290,54 @@ def download_image(id, geometry, image_id, is_panoramic, access_token, processor
     result.insert(0, id)
 
     return result
+
+
+def download_images_for_points(gdf, access_token, max_workers, city, file_name):
+    # Get image processing models
+    processor, model = get_models()
+
+    # Prepare CSV file path
+    csv_file = f"gvi-points-{file_name}.csv"
+    csv_path = os.path.join("results", city, "gvi", csv_file)
+
+    # Check if the CSV file exists and chose the correct editing mode
+    file_exists = os.path.exists(csv_path)
+    mode = 'a' if file_exists else 'w'
+
+    # Create a lock object for thread safety
+    results = []
+    lock = threading.Lock()
+    
+    # Open the CSV file in append mode with newline=''
+    with open(csv_path, mode, newline='') as csvfile:
+        # Create a CSV writer object
+        writer = csv.writer(csvfile)
+
+        # Write the header row if the file is newly created
+        if not file_exists:
+            writer.writerow(["id", "x", "y", "GVI", "is_panoramic", "missing", "error"])
+        
+        # Create a ThreadPoolExecutor to process images concurrently
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+
+            # Iterate over the rows in the GeoDataFrame
+            for _, row in gdf.iterrows():
+                try:
+                    # Submit a download_image task to the executor
+                    futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
+                except Exception as e:
+                    print(f"Exception occurred for row {row['id']}: {str(e)}")
+            
+            # Process the completed futures using tqdm for progress tracking
+            for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images"):
+                # Retrieve the result of the completed future
+                image_result = future.result()
+
+                # Acquire the lock before appending to results and writing to the CSV file
+                with lock:
+                    results.append(image_result)
+                    writer.writerow(image_result)
+
+    # Return the processed image results
+    return results

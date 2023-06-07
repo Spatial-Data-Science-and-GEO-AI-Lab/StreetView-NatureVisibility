@@ -1,68 +1,13 @@
 import os
 os.environ['USE_PYGEOS'] = '0'
 
-from process_data import download_image, get_models, prepare_folders
+from process_data import download_images_for_points, prepare_folders
 from osmnx_road_network import get_road_network, select_points_on_road_network, get_features_on_points
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import geopandas as gpd
 from datetime import timedelta
 from time import time
-from tqdm import tqdm
-import threading
-import csv
 import sys
-
-
-
-def download_images_for_points(gdf, access_token, max_workers, city, file_name):
-    # Get image processing models
-    processor, model = get_models()
-
-    # Prepare CSV file path
-    csv_file = f"gvi-points-{file_name}.csv"
-    csv_path = os.path.join("results", city, "gvi", csv_file)
-
-    # Check if the CSV file exists and chose the correct editing mode
-    file_exists = os.path.exists(csv_path)
-    mode = 'a' if file_exists else 'w'
-
-    # Create a lock object for thread safety
-    results = []
-    lock = threading.Lock()
-    
-    # Open the CSV file in append mode with newline=''
-    with open(csv_path, mode, newline='') as csvfile:
-        # Create a CSV writer object
-        writer = csv.writer(csvfile)
-
-        # Write the header row if the file is newly created
-        if not file_exists:
-            writer.writerow(["id", "x", "y", "GVI", "is_panoramic", "missing", "error"])
-        
-        # Create a ThreadPoolExecutor to process images concurrently
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = []
-
-            # Iterate over the rows in the GeoDataFrame
-            for _, row in gdf.iterrows():
-                try:
-                    # Submit a download_image task to the executor
-                    futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
-                except Exception as e:
-                    print(f"Exception occurred for row {row['id']}: {str(e)}")
-            
-            # Process the completed futures using tqdm for progress tracking
-            for future in tqdm(as_completed(futures), total=len(futures), desc=f"Downloading images"):
-                # Retrieve the result of the completed future
-                image_result = future.result()
-
-                # Acquire the lock before appending to results and writing to the CSV file
-                with lock:
-                    results.append(image_result)
-                    writer.writerow(image_result)
-
-    # Return the processed image results
-    return results
 
 
 if __name__ == "__main__":
