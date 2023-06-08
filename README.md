@@ -16,20 +16,6 @@
 ## Project progress
 This section tracks the progress of the project. The following table shows the progress made each week:
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: left;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr>
@@ -73,7 +59,6 @@ This section tracks the progress of the project. The following table shows the p
     </tr>
   </tbody>
 </table>
-</div>
 
 <br><br> 
 
@@ -205,20 +190,7 @@ Furthermore, to avoid duplication and redundancy, the function removes any dupli
 points = select_points_on_road_network(road, distance)
 ```
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
 
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -249,7 +221,6 @@ points = select_points_on_road_network(road, distance)
     </tr>
   </tbody>
 </table>
-</div>
 
 ![png](images/2.png)
 
@@ -271,20 +242,6 @@ To calculate the distances between the features and the points, a k-dimensional 
 features = get_features_on_points(points, access_token, distance)
 ```
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -331,9 +288,6 @@ features = get_features_on_points(points, access_token, distance)
     </tr>
   </tbody>
 </table>
-</div>
-
-![png](images/2.png)
 
 
 ### Step 4. Downloading and processing images associated with the points to calculate the Green View Index
