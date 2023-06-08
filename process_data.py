@@ -250,7 +250,7 @@ def process_images(image_url, is_panoramic, processor, model):
             return images, pickles, [GVI, is_panoramic, False, False]
         else:
             # There are no road centers, so the image is not suitable for analysis
-            return None, None, [None, None, True, False]
+            return [image], [segmentation], [None, None, True, False]
     except:
         # If there was an error while processing the image, set the "error" flag to true and continue with other images
         return None, None, [None, None, True, True]

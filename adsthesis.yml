@@ -1,0 +1,30 @@
+name: adsthesis
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ipykernel=6.21.1=pyh736e0ef_0
+  - geopandas=0.12.2=pyhd8ed1ab_0
+  - pandas=1.5.3=py310hecf8f37_0
+  - pip=23.0=pyhd8ed1ab_0
+  - planetary-computer=0.4.9=pyhd8ed1ab_0
+  - pystac=1.6.1=pyhd8ed1ab_1
+  - pystac-client=0.6.0=pyhd8ed1ab_0
+  - python=3.10.9=he7542f4_0_cpython
+  - rasterio=1.3.4=py310h3600f62_0
+  - rioxarray=0.13.3=pyhd8ed1ab_0
+  - scikit-learn=1.2.1=py310hcebe997_0
+  - shapely=2.0.1=py310h4e43f2a_0
+  - watchdog=2.2.1=py310h389cd99_0
+  - pip:
+      - huggingface-hub==0.14.1
+      - mercantile==1.2.1
+      - numpy==1.23
+      - odc-geo==0.4.0
+      - odc-stac==0.3.6
+      - osmnx==1.3.0
+      - scipy==1.9.0
+      - torch==2.0.1
+      - tqdm==4.61.1
+      - transformers==4.29.2
+      - vt2geojson==0.2.1
