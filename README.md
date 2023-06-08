@@ -5,7 +5,7 @@
   - [Running in a local environment](#running-in-a-local-environment)
   - [Running in Google Colab](#running-in-google-colab)
 - [Explaining the Pipeline](#explaining-the-pipeline)
-  - [Step 1. Get the road network for the city](#step-1-get-the-road-network-for-the-city)
+  - [Step 1. Get the road network](#step-1-get-the-road-network)
   - [Step 2. Select the sample points on the road network](#step-2-select-the-sample-points-on-the-road-network)
   - [Step 3. Assign features from Mapillary to each point based on their proximity](#step-3-assign-features-from-mapillary-to-each-point-based-on-their-proximity)
   - [Step 4. Downloading and processing images associated with the points to calculate the Green View Index](#step-4-downloading-and-processing-images-associated-with-the-points-to-calculate-the-green-view-index)
@@ -30,7 +30,7 @@ This section tracks the progress of the project. The following table shows the p
     </tr>
     <tr>
       <th>2</th>
-      <td>Worked on the code to download the street view images that will be used to model nature visibility in urban environments.<br><br>I created a Jupyter notebook that retrieves the road network of the selected city using OSMnx, selects points on the roads, retrieves features for each point, and downloads corresponding images. The notebook includes four main sections: <br><ol><li>Retrieving the road network and saving it as a GeoPackage file</li><li>Selecting points on the road edges</li><li>Downloading features for each point and matching them to each point</li><li>Downloading images for each point and saving them locally</li></ol></td>
+      <td>Worked on the code to download the street view images that will be used to model nature visibility in urban environments.<br><br>I created a Jupyter notebook that retrieves the road network of the selected place using OSMnx, selects points on the roads, retrieves features for each point, and downloads corresponding images. The notebook includes four main sections: <br><ol><li>Retrieving the road network and saving it as a GeoPackage file</li><li>Selecting points on the road edges</li><li>Downloading features for each point and matching them to each point</li><li>Downloading images for each point and saving them locally</li></ol></td>
     </tr>
     <tr>
       <th>3</th>
@@ -160,15 +160,15 @@ python main_script.py 'De Uithof, Utrecht' 50 'MLY|' sample-file 8 0 20
 When executing this command, the code will run the following steps.
 
 
-### Step 1. Get the road network for the city
+### Step 1. Get the road network
 
-The first step of the code is to retrieve the road network for a specific city using OpenStreetMap data with the help of the OSMNX library. It begins by fetching the road network graph for the city, focusing on roads that are suitable for driving. One important thing to note is that for bidirectional streets, the osmnx library returns duplicate lines. In this code, we take care to remove these duplicates and keep only the unique road segments to ensure that samples are not taken on the same road multiple times, preventing redundancy in subsequent analysis.
+The first step of the code is to retrieve the road network for a specific place using OpenStreetMap data with the help of the OSMNX library. It begins by fetching the road network graph, focusing on roads that are suitable for driving. One important thing to note is that for bidirectional streets, the osmnx library returns duplicate lines. In this code, we take care to remove these duplicates and keep only the unique road segments to ensure that samples are not taken on the same road multiple times, preventing redundancy in subsequent analysis.
 
 Following that, the code proceeds to project the graph from its original latitude-longitude coordinates to a local projection in meters. This projection is crucial for achieving accurate measurements in subsequent steps where we need to calculate distances between points. By converting the graph to a local projection, we ensure that our measurements align with the real-world distances on the ground, enabling precise analysis and calculations based on the road network data.
 
 
 ```python
-road = get_road_network(city)
+road = get_road_network(place)
 ```
 
 ![png](images/1.png)
@@ -313,7 +313,7 @@ In this final step, the download_images_for_points function is responsible for e
 3. Results Collection: The GVI results, along with the is_panoramic flag and error flags, are collected for each image. The results are written to a CSV file, with each row corresponding to a point in the GeoDataFrame, as soon as a thread finishes its task.
 
 ```python
-results = download_images_for_points(features_copy, access_token, max_workers, city, file_name)
+results = download_images_for_points(features_copy, access_token, max_workers, place, file_name)
 ```
 
 ![png](images/3.png)
