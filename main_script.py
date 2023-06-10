@@ -29,7 +29,15 @@ if __name__ == "__main__":
     if not os.path.exists(file_path_features):
         # Get the sample points and the features assigned to each point
         road = get_road_network(city)
+
+        # Save road in gpkg file
+        road["index"] = road.index
+        road["index"] = road["index"].astype(str)
+        road["highway"] = road["highway"].astype(str)
+        road["length"] = road["length"].astype(float)
+        road[["index", "geometry", "length", "highway"]].to_file(file_path_road, driver="GPKG", crs=road.crs)
         road["geometry"].to_file(file_path_road, driver="GPKG", crs=road.crs)
+        
         points = select_points_on_road_network(road, distance)
         features = get_features_on_points(points, access_token, distance)
         features.to_file(file_path_features, driver="GPKG")

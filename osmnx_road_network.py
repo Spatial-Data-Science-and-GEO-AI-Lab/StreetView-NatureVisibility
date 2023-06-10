@@ -55,6 +55,7 @@ def select_points_on_road_network(roads, N=50):
     for row in roads.itertuples(index=True, name='Road'):
         # Get the LineString object from the geometry
         linestring = row.geometry
+        index = row.index
 
         # Calculate the distance along the linestring and create points every 50 meters
         for distance in range(0, int(linestring.length), N):
@@ -62,10 +63,10 @@ def select_points_on_road_network(roads, N=50):
             point = linestring.interpolate(distance)
 
             # Add the curent point to the list of points
-            points.append(point)
+            points.append([point, index])
     
     # Convert the list of points to a GeoDataFrame
-    gdf_points = gpd.GeoDataFrame(geometry=points)
+    gdf_points = gpd.GeoDataFrame(points, columns=["geometry", "road_index"], geometry="geometry")
 
     # Set the same CRS as the road dataframes for the points dataframe
     gdf_points.set_crs(roads.crs, inplace=True)
@@ -133,7 +134,7 @@ def get_features_on_points(points, access_token, max_distance=50, zoom=14):
     # The query returns the distances and indices of the nearest neighbors
     # The parameter "k=1" specifies that we want to find the nearest neighbor
     # The parameter "distance_upper_bound=max_distance" sets a maximum distance for the nearest neighbors
-    distances, indices = feature_tree.query(points["geometry"].apply(lambda p: [p.x, p.y]).tolist(), k=1, distance_upper_bound=max_distance)
+    distances, indices = feature_tree.query(points["geometry"].apply(lambda p: [p.x, p.y]).tolist(), k=1, distance_upper_bound=max_distance/2)
 
     # Create a list to store the closest features and distances to each point. If there are no images close then set the value of both to None
     closest_features = [feature_points.loc[i, "feature"] if np.isfinite(distances[idx]) else None for idx, i in enumerate(indices)]
