@@ -53,6 +53,3 @@ if __name__ == "__main__":
 
     path_to_file="results/{}/gvi/gvi-points.gpkg".format(city, city)
     gdf.to_file(path_to_file, driver="GPKG", crs=4326)
-
-    path_to_file="results/{}/gvi/gvi-points.geojson".format(city, city)
-    gdf.to_file(path_to_file, driver="GeoJSON", crs=4326)

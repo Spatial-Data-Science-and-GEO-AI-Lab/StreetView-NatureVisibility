@@ -36,7 +36,6 @@ if __name__ == "__main__":
         road["highway"] = road["highway"].astype(str)
         road["length"] = road["length"].astype(float)
         road[["index", "geometry", "length", "highway"]].to_file(file_path_road, driver="GPKG", crs=road.crs)
-        road["geometry"].to_file(file_path_road, driver="GPKG", crs=road.crs)
         
         points = select_points_on_road_network(road, distance)
         features = get_features_on_points(points, access_token, distance)
