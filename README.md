@@ -102,14 +102,14 @@ To create a Conda environment and run the code using the provided YAML file, fol
   <li><b>Create a Conda environment using the provided YAML file</b>: Run the following command to create the Conda environment:
 
   ```bash
-  conda env create -f adsthesis.yml
+  conda env create -f mapillaryGVI.yml
   ```
   This command will read the YAML file and start creating the environment with the specified dependencies. The process may take a few minutes to complete.
   </li>
   <li><b>Activate conda environment</b>: After the environment creation is complete, activate the newly created environment using the following command:
   
   ```bash
-  conda activate adsthesis
+  conda activate mapillaryGVI
   ```
   </li>
   <li><b>Compute GVI index</b>: Once the environment is activated, you can start using the project. To run the code and analyze the Green View Index of a specific place, open the terminal and execute the following command:
@@ -141,10 +141,28 @@ To create a Conda environment and run the code using the provided YAML file, fol
   python mean_gvi_street.py place
   ```
   </li>
+  <li><b>Compute Mean GVI per Street (Optional)</b>: Additionally, you can compute the mean Green View Index (GVI) value per street in the road network. To perform this computation, run the following command in the terminal:
+  
+  ```bash
+  python mean_gvi_street.py place
+  ```
+  </li>
+  <li><b>Estimate missing GVI points with NDVI file (Optional)</b>: Finally, it is possible to make an estimation of the GVI values for the points that have missing images using the NDVI value and linear regression. Before proceeding to the next cell, please make sure to follow these steps:
+    <ol>
+      <li>Manually create the required folder structure: Navigate to the directory StreetView-NatureVisibility/results/{place}/ndvi.</li>
+      <li>Place the corresponding area's NDVI file inside the ndvi folder. The NDVI file should be named ndvi.tif. It is important to use an NDVI file that has been consistently generated for the study area over the course of a year and its CRS must be in the same coordinate reference system (CRS) as specified in the following command. Please check that the CRS uses meters and it is suitable for the study area.</li>
+    </ol>
+
+  ```shell
+  python predict_missing_gvi.py {place} {crs} {distance}
+  ```
+
+  </li>
   <li><b>Accessing Results</b>: Once the analysis is completed, you can navigate to the cloned repository directory on your local computer. Inside the repository, you will find a folder named results. Within the results folder, there will be a subfolder named after the location that was analyzed. This subfolder contains several directories, including:
   <ul>
     <li><b>roads</b>: This directory contains the road network GeoPackage file, which provides information about the road infrastructure in the analyzed area.</li>
     <li><b>points</b>: Here, you can find the sample points GeoPackage file, which includes the spatial data of the sampled points used in the analysis.</li>
+    <li><b>ndvi</b>: This directory has the GeoPackage file with the estimated GVI values using linear regression.</li>
     <li><b>gvi</b>: Initially, this directory contains the CSV file generated during the analysis. It includes the calculated Green View Index (GVI) values for each sampled point. Additionally, if the script for computing the mean GVI per street was executed, this directory will also contain a GeoPackage (GPKG) file with the GVI values aggregated at the street level.</li>
   </li>
 </ol>
@@ -152,7 +170,14 @@ To create a Conda environment and run the code using the provided YAML file, fol
 <br>
 
 ### Running in Google Colab
-To run the project in Google Colab, you can use [this notebook](https://drive.google.com/file/d/167yvLeW2ZXnOPTZlZAaNV5Aqi_7My_sf/view?usp=sharing) which contains the following cells:
+To run the project in Google Colab, you have two options:
+
+<ol>
+  <li>Download the mapillary_GVI_googlecolab.ipynb notebook and open it on Google Colab.</li>
+  <li>Alternatively, you can directly access the notebook using <a href="https://drive.google.com/file/d/16ZEnpBnYftpZsj2_cGQTrLg35ccJDwhQ/view?usp=sharing">this link</a></li>
+</ol>
+
+This notebook contains the following code:
 
 <ol>
   <li><b>Configure GPU</b>: Before running the Jupyter Notebook, it is recommended to configure it to use a GPU. Follow these steps:
@@ -241,10 +266,26 @@ To run the project in Google Colab, you can use [this notebook](https://drive.go
 
   ```
   </li>
+  <li><b>Estimate missing GVI points with NDVI (Optional)</b>: Finally, it is possible to make an estimation of the GVI values for the points that have missing images using the NDVI value and linear regression. Before proceeding to the next cell, please make sure to follow these steps:
+    <ol>
+      <li>Manually create the required folder structure: Navigate to the directory StreetView-NatureVisibility/results/{place}/ndvi.</li>
+      <li>Place the corresponding area's NDVI file inside the ndvi folder. The NDVI file should be named ndvi.tif. It is crucial to use an NDVI file that has been consistently generated for the study area over the course of a year.</li>
+    </ol>
+  
+  <b>Important note</b>: The NDVI file must be in the same coordinate reference system (CRS) as specified in the code.
+
+  ```python
+  crs = 32631
+  command = f"python predict_missing_gvi.py '{place}' {crs} {distance}"
+  !{command}
+  ```
+
+  </li>
   <li><b>Accessing Results</b>: Once the analysis is completed, you can access your Google Drive and navigate to the 'StreetView-NatureVisibility/results/' folder. Inside this folder, you will find a subfolder named after the location that was analyzed. This subfolder contains several directories, including:
     <ul>
       <li><b>roads</b>: This directory contains the road network GeoPackage file, which provides information about the road infrastructure in the analyzed area.</li>
       <li><b>points</b>: Here, you can find the sample points GeoPackage file, which includes the spatial data of the sampled points used in the analysis.</li>
+      <li><b>ndvi</b>: This directory has the GeoPackage file with the estimated GVI values using linear regression.</li>
       <li><b>gvi</b>: Initially, this directory contains the CSV file generated during the analysis. It includes the calculated Green View Index (GVI) values for each sampled point. Additionally, if the script for computing the mean GVI per street was executed, this directory will also contain a GeoPackage (GPKG) file with the GVI values aggregated at the street level.</li>
     </ul>
   </li>
@@ -433,14 +474,26 @@ results['geometry'] = results.apply(lambda row: Point(float(row["x"]), float(row
 gdf = gpd.GeoDataFrame(results, geometry='geometry', crs=4326)
 ```
 
+### Step 5 (Optional). Estimate missing GVI values with NDVI file
+Finally, an optional step is to estimate the GVI values for points that have missing images using an NDVI file and linear regression. This step utilizes the module developed by [Yúri Grings](https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/GreenEx_Py).
+
+To perform this step, an NDVI file specific to the study area is needed. It is crucial to use an NDVI file that has been consistently generated for the study area over the course of a year. Additionally, ensure that the coordinate reference system (CRS) of the NDVI file is in meters and is suitable for the study area.</li>
+
+```bash
+python predict_missing_gvi.py "De Uithof, Utrecht" 32631 50
+```
+
+![png](images/4.png)
+
+
 ### Samples of images and segmentations
 Images that are centered in the road are considered as suitable for this analysis. This selection was made based on the algorithm designed by [Matthew Danish](https://github.com/mrd/vsvi_filter).
 
 **Suitable images for the analysis**
-![png](images/4.png)
 ![png](images/5.png)
+![png](images/6.png)
 
 
 **Unsuitable images for the analysis**
-![png](images/6.png)
 ![png](images/7.png)
+![png](images/8.png)
