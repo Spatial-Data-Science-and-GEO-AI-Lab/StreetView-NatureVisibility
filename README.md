@@ -122,19 +122,19 @@ To create a Conda environment and run the code using the provided YAML file, fol
     <li><b>begin</b> and <b>end</b>: Define the range of points to be analyzed. In this example, the range is set from 0 to 20, meaning that the script will analyze the first 20 points. If desired, you can omit these parameters, allowing the code to run for the entire dataset. However, specifying the range can be useful, especially if the code stops running before analyzing all the points.</li>
   </ul>
   </li>
-  <li>Generate GeoPackage Files (Optional): After retrieving the GVI data, you have the option to generate GeoPackage files from the obtained CSV files. This step can be executed by running the following command in the terminal:
+  <li><b>Generate GeoPackage Files (Optional)</b>: After retrieving the GVI data, you have the option to generate GeoPackage files from the obtained CSV files. This step can be executed by running the following command in the terminal:
 
   ```bash
   python get_gvi_gpkg.py place
   ```
   </li>
-  <li>Compute Mean GVI per Street (Optional): Additionally, you can compute the mean Green View Index (GVI) value per street in the road network. To perform this computation, run the following command in the terminal:
+  <li><b>Compute Mean GVI per Street (Optional)</b>: Additionally, you can compute the mean Green View Index (GVI) value per street in the road network. To perform this computation, run the following command in the terminal:
   
   ```bash
   python mean_gvi_street.py place
   ```
   </li>
-  <li>Accessing Results: Once the analysis is completed, you can navigate to the cloned repository directory on your local computer. Inside the repository, you will find a folder named results. Within the results folder, there will be a subfolder named after the location that was analyzed. This subfolder contains several directories, including:
+  <li><b>Accessing Results</b>: Once the analysis is completed, you can navigate to the cloned repository directory on your local computer. Inside the repository, you will find a folder named results. Within the results folder, there will be a subfolder named after the location that was analyzed. This subfolder contains several directories, including:
   <ul>
     <li><b>roads</b>: This directory contains the road network GeoPackage file, which provides information about the road infrastructure in the analyzed area.</li>
     <li><b>points</b>: Here, you can find the sample points GeoPackage file, which includes the spatial data of the sampled points used in the analysis.</li>
@@ -218,7 +218,7 @@ To run the project in Google Colab, you can use [this notebook](https://drive.go
 
   ```
   </li>
-  <li><b>Generate GeoPackage Files (Optional)</b>*: After retrieving the GVI data, the notebook executes another script ('get_gvi_gpkg.py') to generate GeoPackage files from the obtained CSV files. The generated GeoPackage files include the road network of the analyzed place, sample points, and the CSV file containing GVI values.
+  <li><b>Generate GeoPackage Files (Optional)</b>: After retrieving the GVI data, the notebook executes another script ('get_gvi_gpkg.py') to generate GeoPackage files from the obtained CSV files. The generated GeoPackage files include the road network of the analyzed place, sample points, and the CSV file containing GVI values.
 
   ```python
   command = f"python get_gvi_gpkg.py '{place}'"
