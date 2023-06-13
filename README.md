@@ -60,9 +60,9 @@ This section tracks the progress of the project. The following table shows the p
   </tbody>
   <tr>
       <th>8</th>
-      <td>I created a Jupyter Notebook for Google Colab that simplifies the usage of the project by allowing users to run each cell of the notebook without the need to manually download files from the GitHub repository and upload them to Google Colab. Detailed instructions on how to use the notebook are provided in the README file.
-      Additionally, I am currently running the code to calculate the GVI (Green Vegetation Index) value from the NDVI (Normalized Difference Vegetation Index) value using linear regression and linear GAM (Generalized Additive Model) for all the cities.
-      Furthermore, I have begun writing the methodology section for the written component of the project.td>
+      <td>I created a Jupyter Notebook for Google Colab that simplifies the usage of the project by allowing users to run each cell of the notebook without the need to manually download files from the GitHub repository and upload them to Google Colab. Detailed instructions on how to use the notebook are provided in the README file.<br>
+      Additionally, I am currently running the code to calculate the GVI (Green Vegetation Index) value from the NDVI (Normalized Difference Vegetation Index) value using linear regression and linear GAM (Generalized Additive Model) for all the cities.<br>
+      Furthermore, I have begun writing the methodology section for the written component of the project.<td>
     </tr>
   </tbody>
 </table>
