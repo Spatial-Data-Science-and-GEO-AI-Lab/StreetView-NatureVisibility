@@ -68,49 +68,99 @@ This section tracks the progress of the project. The following table shows the p
 To create a Conda environment and run the code using the provided YAML file, follow these steps:
 
 <ol>
-  <li>Open a terminal or command prompt on your computer.</li>
-  <li>Navigate to the directory where the YML file is located. Use the `cd` command to change directories. For example, if your YML file is in the "Documents" folder, you can use the following command:
+  <li><b>Cloning GitHub Repository:</b>Open a terminal or command prompt on your computer and navigate to the directory where you want to clone the GitHub repository using the following commands:
   
+  <ol>
+  <li>Use the <b>cd</b> command to change directories. For example, if you want to clone the repository in the "Documents" folder, you can use the following command:
+    
   ```bash
   cd Documents
   ```
   </li>
-  <li>Once you are in the correct directory, run the following command to create the Conda environment:
+  <li>Clone the GitHub repository named "StreetView-NatureVisibility" by executing the following command:
+
+  ```bash
+  git clone https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/StreetView-NatureVisibility.git
+  ```
+  This command will download the repository and create a local copy on your computer.
+  </li>
+  <li>Once the cloning process is complete, navigate to the cloned repository by using the cd command:
+
+  ```bash
+  cd StreetView-NatureVisibility
+  ```
+  </li>
+  </ol>
+  </li>
+  <li><b>Create a Conda environment using the provided YAML file</b>: Run the following command to create the Conda environment:
 
   ```bash
   conda env create -f adsthesis.yml
   ```
   This command will read the YAML file and start creating the environment with the specified dependencies. The process may take a few minutes to complete.
   </li>
-  <li>After the environment creation is complete, activate the newly created environment using the following command:
+  <li><b>Activate conda environment</b>: After the environment creation is complete, activate the newly created environment using the following command:
   
   ```bash
   conda activate adsthesis
   ```
   </li>
-  <li>Once the environment is activated, you can start using the project. To run the code and analyze the Green View Index of a specific place, open the terminal and execute the following command:</li>
+  <li><b>Compute GVI index</b>: Once the environment is activated, you can start using the project. To run the code and analyze the Green View Index of a specific place, open the terminal and execute the following command:
   
   ```bash
   python main_script.py place distance access_token file_name max_workers begin end
   ```
+
   Replace the following parameters with appropriate values:
+    
   <ul>
     <li><b>place</b>: indicates the name of the place that you want to analyze. In this specific example, we will analyse the Green View Index in Utrecht Science Park, so it is set to 'De Uithof, Utrecht'. You can replace it with the name of any other city, neighbourhood or even street you want to analyze.</li>
     <li><b>distance</b>: Represents the distance between sample points in meters. For this example, it's set to 50 meters. This value determines the spacing between the analyzed points.</li>
-    <li><b>access_token</b>: Access token for Mapillary (e.g. MLY|). If you don't have an access token yet, you can follow the instructions on [this webpage](https://help.mapillary.com/hc/en-us/articles/360010234680-Accessing-imagery-and-data-through-the-Mapillary-API#h_ed5f1c3b-8fa3-432d-9e94-1e474cbc1868)</li>
+    <li><b>access_token</b>: Access token for Mapillary (e.g. MLY|). If you don't have an access token yet, you can follow the instructions on <a href="https://help.mapillary.com/hc/en-us/articles/360010234680-Accessing-imagery-and-data-through-the-Mapillary-API#h_ed5f1c3b-8fa3-432d-9e94-1e474cbc1868">this webpage</a></li>
     <li><b>file_name</b>: Represents the name of the CSV file where the points with the GVI (Green View Index) value will be stored. The provided example file name is "sample-file". You can change it to any desired name for your output file.</li>
     <li><b>max_workers</b>:  Indicates the number of threads to be used. A good starting point is the number of CPU cores in the computer running the code. However, you can experiment with different thread counts to find the optimal balance between performance and resource utilization. Keep in mind that this may not always be the maximum number of threads or the number of CPU cores.</li>
     <li><b>begin</b> and <b>end</b>: Define the range of points to be analyzed. In this example, the range is set from 0 to 20, meaning that the script will analyze the first 20 points. If desired, you can omit these parameters, allowing the code to run for the entire dataset. However, specifying the range can be useful, especially if the code stops running before analyzing all the points.</li>
   </ul>
+  </li>
+  <li>Generate GeoPackage Files (Optional): After retrieving the GVI data, you have the option to generate GeoPackage files from the obtained CSV files. This step can be executed by running the following command in the terminal:
+
+  ```bash
+  python get_gvi_gpkg.py place
+  ```
+  </li>
+  <li>Compute Mean GVI per Street (Optional): Additionally, you can compute the mean Green View Index (GVI) value per street in the road network. To perform this computation, run the following command in the terminal:
+  
+  ```bash
+  python mean_gvi_street.py place
+  ```
+  </li>
+  <li>Accessing Results: Once the analysis is completed, you can navigate to the cloned repository directory on your local computer. Inside the repository, you will find a folder named results. Within the results folder, there will be a subfolder named after the location that was analyzed. This subfolder contains several directories, including:
+  <ul>
+    <li><b>roads</b>: This directory contains the road network GeoPackage file, which provides information about the road infrastructure in the analyzed area.</li>
+    <li><b>points</b>: Here, you can find the sample points GeoPackage file, which includes the spatial data of the sampled points used in the analysis.</li>
+    <li><b>gvi</b>: Initially, this directory contains the CSV file generated during the analysis. It includes the calculated Green View Index (GVI) values for each sampled point. Additionally, if the script for computing the mean GVI per street was executed, this directory will also contain a GeoPackage (GPKG) file with the GVI values aggregated at the street level.</li>
+  </li>
 </ol>
 
 <br>
 
 ### Running in Google Colab
-To run the project in Google Colab, follow these steps:
+To run the project in Google Colab, you can use [this notebook](https://drive.google.com/file/d/167yvLeW2ZXnOPTZlZAaNV5Aqi_7My_sf/view?usp=sharing) which contains the following cells:
 
 <ol>
-  <li>Install the required libraries that are not installed by default in Google Colab. Run the following commands:
+  <li><b>Configure GPU</b>: Before running the Jupyter Notebook, it is recommended to configure it to use a GPU. Follow these steps:
+    <ol>
+      <li>Go to the "Runtime" menu at the top.</li>
+      <li>Select "Change runtime type" from the dropdown menu.</li>
+      <li>In the "Runtime type" section, choose "Python 3".</li>
+      <li>In the "Hardware accelerator" section, select "GPU".</li>
+      <li>In the "GPU type" section, choose "T4" if available.</li>
+      <li>In the "Runtime shape" section, select "High RAM".</li>
+      <li>Save the notebook settings</li>
+    </ol>
+  </li>
+
+  <li><b>Install Required Libraries</b>: The notebook begins by installing the necessary libraries that are not already installed in the Google Colab environment. This step ensures that all the required dependencies are available for the notebook's execution.
 
   ```python
   %pip install transformers==4.29.2
@@ -122,29 +172,74 @@ To run the project in Google Colab, follow these steps:
   ```
   </li>
 
-  <li>If you plan to use Google Drive for storage and want to access files from there, you have to mount Google Drive. This step allows you to upload the project folder only once and access it easily. Run the following code:
+  <li><b>Mount Google Drive</b>:  The notebook mounts the Google Drive to allow easy access to files and storage. This step enables uploading the project folder once and accessing it conveniently throughout the notebook.
 
   ```python
   from google.colab import drive
 
   drive.mount('/content/drive')
-  %cd /content/drive/MyDrive/StreetView-NatureVisibility
+
+  %cd /content/drive/MyDrive
   ```
-  This will mount your Google Drive and change the current directory to the location of your project folder. Adjust the path (/content/drive/MyDrive/StreetView-NatureVisibility) if your project folder is located elsewhere.
   </li>
 
-  <li>You can now run the code in a new code cell. For example:
+  <li><b>Clone GitHub Repository (If Needed)</b>: The notebook checks if the GitHub repository named "StreetView-NatureVisibility" is already cloned in the Google Drive. If not, it proceeds to clone the repository using the 'git clone' command so the required scripts and files from the repository are available.
 
   ```python
-  begin = 0
-  end = 100000
+  import os
 
-  command = f"python main_script.py 'Melbourne, Australia' 50 'MLY|' melbourne-gvi 6 {begin} {end}"
-  !{command}
+  if not os.path.isdir('StreetView-NatureVisibility'):
+    !git clone https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/StreetView-NatureVisibility.git
+  
+  %cd StreetView-NatureVisibility
   ```
-  In this example, the main_script.py file will be executed to analyze the Green View Index for Melbourne, Australia. Adjust the parameters ('Melbourne, Australia', 50, 'MLY|', melbourne-gvi, 6, begin, end) based on your specific analysis requirements.
+  </li>
 
-  If you encounter any issues, ensure that all the necessary files are uploaded to the assigned server or check if the required data is accessible.
+  <li><b>Set Analysis Parameters</b>: For example:
+
+  ```python
+  place = 'De Uithof, Utrecht'
+  distance = 50
+  access_token = 'MLY|'
+  file_name = 'amsterdam-gvi'
+  max_workers = 6
+  begin = None
+  end = None
+
+  ```
+  In this example, the main_script.py file will be executed to analyze the Green View Index for Amsterdam, Netherlands.
+  </li>
+
+  <li><b>Retrieve Green View Index (GVI) Data</b>: The notebook executes a script ('main_script.py') to retrieve the Green View Index (GVI) data. The script takes the specified analysis parameters as input and performs the data retrieval process.
+  
+  ```python
+  command = f'python main_script.py '{place}' {distance} '{access_token}' {file_name} {max_workers} {begin if begin is not None else ''} {end if end is not None else ''}'
+  !{command}
+
+  ```
+  </li>
+  <li><b>Generate GeoPackage Files (Optional)</b>*: After retrieving the GVI data, the notebook executes another script ('get_gvi_gpkg.py') to generate GeoPackage files from the obtained CSV files. The generated GeoPackage files include the road network of the analyzed place, sample points, and the CSV file containing GVI values.
+
+  ```python
+  command = f"python get_gvi_gpkg.py '{place}'"
+  !{command}
+
+  ```
+  </li>
+  <li><b>Compute Mean GVI per Street (Optional)</b>: Additionally, the notebook provides the option to compute the mean Green View Index (GVI) value per street in the road network. Running a script ('mean_gvi_street.py') achieves this computation.
+  
+  ```python
+  command = f"python mean_gvi_street.py '{place}'"
+  !{command}
+
+  ```
+  </li>
+  <li><b>Accessing Results</b>: Once the analysis is completed, you can access your Google Drive and navigate to the 'StreetView-NatureVisibility/results/' folder. Inside this folder, you will find a subfolder named after the location that was analyzed. This subfolder contains several directories, including:
+    <ul>
+      <li><b>roads</b>: This directory contains the road network GeoPackage file, which provides information about the road infrastructure in the analyzed area.</li>
+      <li><b>points</b>: Here, you can find the sample points GeoPackage file, which includes the spatial data of the sampled points used in the analysis.</li>
+      <li><b>gvi</b>: Initially, this directory contains the CSV file generated during the analysis. It includes the calculated Green View Index (GVI) values for each sampled point. Additionally, if the script for computing the mean GVI per street was executed, this directory will also contain a GeoPackage (GPKG) file with the GVI values aggregated at the street level.</li>
+    </ul>
   </li>
 </ol>
 
