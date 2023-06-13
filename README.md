@@ -250,7 +250,7 @@ To run the project in Google Colab, you can use [this notebook](https://drive.go
 For this explanation, Utrecht Science Park will be used. Therefore, the command should look like this:
 
 ```bash
-python main_script.py 'De Uithof, Utrecht' 50 'MLY|' sample-file 8 0 20
+python main_script.py 'De Uithof, Utrecht' 50 'MLY|' sample-file 8
 ```
 When executing this command, the code will run the following steps.
 
