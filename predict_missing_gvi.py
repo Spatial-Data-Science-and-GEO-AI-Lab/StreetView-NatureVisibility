@@ -68,9 +68,18 @@ def linear_regression(city):
     rmse_scores = np.sqrt(-cross_val_score(lin_reg, X_train, y_train, scoring='neg_mean_squared_error', cv=5))
     avg_rmse = np.mean(rmse_scores)
 
-    print(f"RMSE for Linear Regression with cross-validation: {avg_rmse}")
+    # Get the number of parameters (including intercept)
+    k = X_train.shape[1] + 1
+    n = len(y_train)  # number of samples
 
-    return avg_rmse, updated_df
+    # Calculate the AIC
+    aic = n * np.log(avg_rmse ** 2) + 2 * k
+
+    print("<----- Linear Regression ----->")
+    print("RMSE:", avg_rmse)
+    print("AIC value:", aic)
+
+    return updated_df
 
 
 def gam_regression(city):
@@ -118,9 +127,18 @@ def gam_regression(city):
     rmse_scores = np.sqrt(-cross_val_score(gam, X_train, y_train, scoring='neg_mean_squared_error', cv=5))
     avg_rmse = np.mean(rmse_scores)
 
-    print(f"RMSE for GAM with cross-validation: {avg_rmse}")
+    # Get the number of parameters (including intercept)
+    k = X_train.shape[1] + 1
+    n = len(y_train)  # number of samples
 
-    return avg_rmse, updated_df
+    # Calculate the AIC
+    aic = n * np.log(avg_rmse ** 2) + 2 * k
+    
+    print("<----- Linear GAM ----->")
+    print("RMSE:", avg_rmse)
+    print("AIC value:", aic)
+
+    return updated_df
 
 
 def clean_points(city, crs):
@@ -154,16 +172,20 @@ if __name__ == "__main__":
 
     # Extract city, CRS, and distance from the command-line arguments
     city = args[1] # City to analyze
-    crs = int(args[2]) # CRS in meters, suitable for the area in which we are working
-    # For example, we can use the same CRS as the roads.gpkg file
-    # IMPORTANT: The NDVI image should be in this CRS
-    distance = int(args[3]) # The distance used to generate the sample points
+    ndvi_file_exists = bool(int(args[2])) # Indicates if we already have the NDVI values 
     
-    # Step 1: Clean the GVI points by filtering points outside the extent of the NDVI file
-    gvi, ndvi = clean_points(city, crs)
+    if not ndvi_file_exists:
+        crs = int(args[3]) # CRS in meters, suitable for the area in which we are working
+        # For example, we can use the same CRS as the roads.gpkg file
+        # IMPORTANT: The NDVI image should be in this CRS
+        distance = int(args[4]) # The distance used to generate the sample points
+        
+        # Step 1: Clean the GVI points by filtering points outside the extent of the NDVI file
+        gvi, ndvi = clean_points(city, crs)
 
-    # Step 2: Calculate the mean NDVI values from the filtered GVI points
-    ndvi_path = calculate_ndvi(gvi, ndvi, distance//2, city, crs)
+        # Step 2: Calculate the mean NDVI values from the filtered GVI points
+        ndvi_path = calculate_ndvi(gvi, ndvi, distance//2, city, crs)
 
     # Step 3: Train a Linear Regression model to predict missing GVI values
-    linreg_rmse, linreg = linear_regression(city)
+    linreg = linear_regression(city)
+    lingam = gam_regression(city)

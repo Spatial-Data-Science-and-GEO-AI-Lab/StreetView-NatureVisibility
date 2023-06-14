@@ -9,6 +9,7 @@
   - [Step 2. Select the sample points on the road network](#step-2-select-the-sample-points-on-the-road-network)
   - [Step 3. Assign features from Mapillary to each point based on their proximity](#step-3-assign-features-from-mapillary-to-each-point-based-on-their-proximity)
   - [Step 4. Downloading and processing images associated with the points to calculate the Green View Index](#step-4-downloading-and-processing-images-associated-with-the-points-to-calculate-the-green-view-index)
+  - [Step 5 (Optional). Estimate missing GVI values with NDVI file](#step-5-optional-estimate-missing-gvi-values-with-ndvi-file)
 
 
 <br><br> 
@@ -333,7 +334,6 @@ Furthermore, to avoid duplication and redundancy, the function removes any dupli
 points = select_points_on_road_network(road, distance)
 ```
 
-
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -475,13 +475,35 @@ gdf = gpd.GeoDataFrame(results, geometry='geometry', crs=4326)
 ```
 
 ### Step 5 (Optional). Estimate missing GVI values with NDVI file
-Finally, an optional step is to estimate the GVI values for points that have missing images using an NDVI file and linear regression. This step utilizes the module developed by [Yúri Grings](https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/GreenEx_Py).
+Finally, the analysis employs linear regression and linear generalized additive models (GAM) to extract insights from the GVI points calculated in the previous step. The primary objective here is to estimate the GVI values for points with missing images. For this purpose, the code incorporates a module developed by [Yúri Grings](https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/GreenEx_Py), which facilitates the extraction of the NDVI values from a TIF file for a given list of points of interest.
 
-To perform this step, an NDVI file specific to the study area is needed. It is crucial to use an NDVI file that has been consistently generated for the study area over the course of a year. Additionally, ensure that the coordinate reference system (CRS) of the NDVI file is in meters and is suitable for the study area.</li>
+To successfully execute this step, an NDVI file specific to the study area is needed. For optimal results, it is recommended to use an NDVI file that has been consistently generated for the study area throughout an entire year. Furthermore, ensure that the coordinate reference system (CRS) of the NDVI file is projected, with meters as the unit of measurement.</li>
 
 ```bash
 python predict_missing_gvi.py "De Uithof, Utrecht" 32631 50
 ```
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Linear Regression</th>
+      <th>Linear GAM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>RMSE</th>
+      <td>0.1707</td>
+      <td>0.1640</td>
+    </tr>
+    <tr>
+      <th>AIC</th>
+      <td>-879.7232</td>
+      <td>-899.8143</td>
+    </tr>
+  </tbody>
+</table>
 
 ![png](images/4.png)
 
