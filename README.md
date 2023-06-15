@@ -175,7 +175,7 @@ To run the project in Google Colab, you have two options:
 
 <ol>
   <li>Download the mapillary_GVI_googlecolab.ipynb notebook and open it on Google Colab.</li>
-  <li>Alternatively, you can directly access the notebook using <a href="https://drive.google.com/file/d/16ZEnpBnYftpZsj2_cGQTrLg35ccJDwhQ/view?usp=sharing">this link</a></li>
+  <li>Alternatively, you can directly access the notebook using <a href="https://drive.google.com/file/d/12PvgNywwwzfuqrtoeAZRD6UIQb3jqDRX/view?usp=sharing">this link</a></li>
 </ol>
 
 This notebook contains the following code:
