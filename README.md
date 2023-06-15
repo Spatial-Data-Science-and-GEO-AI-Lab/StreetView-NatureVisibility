@@ -142,20 +142,14 @@ To create a Conda environment and run the code using the provided YAML file, fol
   python mean_gvi_street.py place
   ```
   </li>
-  <li><b>Compute Mean GVI per Street (Optional)</b>: Additionally, you can compute the mean Green View Index (GVI) value per street in the road network. To perform this computation, run the following command in the terminal:
-  
-  ```bash
-  python mean_gvi_street.py place
-  ```
-  </li>
   <li><b>Estimate missing GVI points with NDVI file (Optional)</b>: Finally, it is possible to make an estimation of the GVI values for the points that have missing images using the NDVI value and linear regression. Before proceeding to the next cell, please make sure to follow these steps:
     <ol>
-      <li>Manually create the required folder structure: Navigate to the directory StreetView-NatureVisibility/results/{place}/ndvi.</li>
-      <li>Place the corresponding area's NDVI file inside the ndvi folder. The NDVI file should be named ndvi.tif. It is important to use an NDVI file that has been consistently generated for the study area over the course of a year and its CRS must be in the same coordinate reference system (CRS) as specified in the following command. Please check that the CRS uses meters and it is suitable for the study area.</li>
+      <li>Make sure to use an appropriate projection in meters that is suitable for your study area. For example, you can use the same projection as the one used in the roads.gpkg file.</li>
+      <li>Ensure that you have created the required folder structure: StreetView-NatureVisibility/results/{place}/ndvi. Place the corresponding NDVI file, named ndvi.tif, inside this folder. It is recommended to use an NDVI file that has been consistently generated for the study area over the course of a year. The NDVI file must be in the same chosen projection for your area of study.</li>
     </ol>
 
   ```shell
-  python predict_missing_gvi.py {place} {crs} {distance}
+  python predict_missing_gvi.py {place} {epsg_code} {distance}
   ```
 
   </li>
@@ -269,15 +263,16 @@ This notebook contains the following code:
   </li>
   <li><b>Estimate missing GVI points with NDVI (Optional)</b>: Finally, it is possible to make an estimation of the GVI values for the points that have missing images using the NDVI value and linear regression. Before proceeding to the next cell, please make sure to follow these steps:
     <ol>
-      <li>Manually create the required folder structure: Navigate to the directory StreetView-NatureVisibility/results/{place}/ndvi.</li>
-      <li>Place the corresponding area's NDVI file inside the ndvi folder. The NDVI file should be named ndvi.tif. It is crucial to use an NDVI file that has been consistently generated for the study area over the course of a year.</li>
+      <li>Choose a projection in meters that is suitable for your study area.</li>
+      <li>Ensure that you have created the required folder structure: StreetView-NatureVisibility/results/{place}/ndvi.</li>
+      <li>Place the corresponding NDVI file, named ndvi.tif, inside this folder. It is recommended to use an NDVI file that has been consistently generated for the study area over the course of a year. The NDVI file must be in the same chosen projection for your area of study</li>
     </ol>
   
-  <b>Important note</b>: The NDVI file must be in the same coordinate reference system (CRS) as specified in the code.
+  <b>Important note</b>: please note that the EPSG code specified in the code, which is 32631, is just an example for De Uithof, Netherlands.
 
   ```python
-  crs = 32631
-  command = f"python predict_missing_gvi.py '{place}' {crs} {distance}"
+  epsg_code = 32631
+  command = f"python predict_missing_gvi.py '{place}' {epsg_code} {distance}"
   !{command}
   ```
 
@@ -378,7 +373,7 @@ The get_features_on_points function utilizes the mercantile.tile function from t
 
 Once the points are grouped based on their tile coordinates, the tiles are downloaded in parallel using threads. The get_features_for_tile function constructs a unique URL for each tile and sends a request to the Mapillary API to retrieve the features (images) within that specific tile.
 
-To calculate the distances between the features and the points, a k-dimensional tree (KDTree) approach is employed using the local projected crs in meters. The KDTree is built using the geometry coordinates of the feature points. By querying the KDTree, the nearest neighbors of the points in the points dataframe are identified. The closest feature and distance information are then assigned to each point accordingly.
+To calculate the distances between the features and the points, a k-dimensional tree (KDTree) approach is employed using the local projected CRS in meters. The KDTree is built using the geometry coordinates of the feature points. By querying the KDTree, the nearest neighbors of the points in the points dataframe are identified. The closest feature and distance information are then assigned to each point accordingly.
 
 
 ```python
