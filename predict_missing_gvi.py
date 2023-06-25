@@ -68,6 +68,10 @@ def linear_regression(city):
     rmse_scores = np.sqrt(-cross_val_score(lin_reg, X_train, y_train, scoring='neg_mean_squared_error', cv=5))
     avg_rmse = np.mean(rmse_scores)
 
+    # Compute R2 score using cross-validation
+    r2_scores = cross_val_score(lin_reg, X_train, y_train, scoring='r2', cv=5)
+    avg_r2 = np.mean(r2_scores)
+
     # Get the number of parameters (including intercept)
     k = X_train.shape[1] + 1
     n = len(y_train)  # number of samples
@@ -76,6 +80,7 @@ def linear_regression(city):
     aic = n * np.log(avg_rmse ** 2) + 2 * k
 
     print("<----- Linear Regression ----->")
+    print("R2 value:", avg_r2)
     print("RMSE:", avg_rmse)
     print("AIC value:", aic)
 

@@ -21,8 +21,8 @@ if __name__ == "__main__":
     roads = gpd.read_file(roads_path, layer="roads")
 
     # Load points with gvi layer
-    points_path = os.path.join(dir_path, "gvi", "gvi-points.gpkg")
-    points = gpd.read_file(points_path, layer="gvi-points", crs=4326)
+    points_path = os.path.join(dir_path, "ndvi", "calculated_missing_values_linreg.gpkg")
+    points = gpd.read_file(points_path, layer="calculated_missing_values_linreg", crs=4326)
     points.to_crs(crs=roads.crs, inplace=True)
 
     # Load points with roads layer
@@ -47,5 +47,5 @@ if __name__ == "__main__":
     roads_with_avg_gvi = roads.merge(gvi_per_road, left_on="index", right_on="road_index", how='left')
 
     # Save results to GPKG
-    path_to_file="results/{}/gvi/gvi-streets.gpkg".format(city)
+    path_to_file="results/{}/ndvi/gvi-streets.gpkg".format(city)
     roads_with_avg_gvi.to_file(path_to_file, driver="GPKG", crs=roads.crs)
