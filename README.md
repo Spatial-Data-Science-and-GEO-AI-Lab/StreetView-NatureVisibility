@@ -1,74 +1,19 @@
 # Automated Street View Index Calculation Pipeline using Mapillary Street Images
 
-- [Project Progress](#project-progress)
 - [Setting up the environment](#setting-up-the-environment)
   - [Running in a local environment](#running-in-a-local-environment)
   - [Running in Google Colab](#running-in-google-colab)
 - [Explaining the Pipeline](#explaining-the-pipeline)
-  - [Step 1. Get the road network](#step-1-get-the-road-network)
-  - [Step 2. Select the sample points on the road network](#step-2-select-the-sample-points-on-the-road-network)
-  - [Step 3. Assign features from Mapillary to each point based on their proximity](#step-3-assign-features-from-mapillary-to-each-point-based-on-their-proximity)
-  - [Step 4. Downloading and processing images associated with the points to calculate the Green View Index](#step-4-downloading-and-processing-images-associated-with-the-points-to-calculate-the-green-view-index)
-  - [Step 5 (Optional). Estimate missing GVI values with NDVI file](#step-5-optional-estimate-missing-gvi-values-with-ndvi-file)
+  - [Step 1. Retrieve street road network and generate sample points](#step-1-retrieve-street-road-network-and-generate-sample-points)
+  - [Step 2. Assign images to each sample point based on proximity](#step-2-assign-images-to-each-sample-point-based-on-proximity)
+  - [Step 3. Clean and process data](#step-3-clean-and-process-data)
+  - [Step 4. Calculate GVI](#step-4-calculate-gvi)
+  - [Step 5 (Optional). Evaluate image availability and image usability of Mapillary Image data](#step-5-optional-evaluate-image-availability-and-image-usability-of-mapillary-image-data)
+  - [Step 6 (Optional). Model GVI for missing points](#step-6-optional-model-gvi-for-missing-points)
 
 
 <br><br> 
 
-## Project progress
-This section tracks the progress of the project. The following table shows the progress made each week:
-
-<table border="1" class="dataframe">
-  <thead>
-    <tr>
-      <th>Week</th>
-      <th>Task</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>1</th>
-      <td>Read papers on previous related work</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>Worked on the code to download the street view images that will be used to model nature visibility in urban environments.<br><br>I created a Jupyter notebook that retrieves the road network of the selected place using OSMnx, selects points on the roads, retrieves features for each point, and downloads corresponding images. The notebook includes four main sections: <br><ol><li>Retrieving the road network and saving it as a GeoPackage file</li><li>Selecting points on the road edges</li><li>Downloading features for each point and matching them to each point</li><li>Downloading images for each point and saving them locally</li></ol></td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>I completed the following tasks:<br><ol><li>Added image segmentation using facebook/mask2former-swin-large-cityscapes-semanic. This enables the code to segment street images into differet regions based on their content. By leveraging this segmentation, we can subsequently identify the road centers and calculate the GVI (Green View Index) value. </li><li>Implemented code to find the center of the roads in street images following the approach proposed by Matthew Danis. This allows for the classification of images as usable or unusable based on the presence of a road centre.</li> </td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>My focus was on cropping the panoramic images to ensure a consistent approach across the dataset. Moreover, I wrote the necessary code to calculate the GVI for each point and stored the results in a GeoDataFrame.</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>I helped Yúri in modifying the code to enable the calculation of GVI for a group of address points. Moreover, I divided the pipeline into separate components, allowing independent execution of point sampling, image downloading, and image processing. Furthermore, I initiated the execution of the code in not only Kampala, Uganda but also in Amsterdam, Netherlands.</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>
-      I fixed some bugs found in the code such as:
-      <ul><li>Resolved the problem with bidirectional streets in osmnx where two lines were retrieved with exchanged starting and ending points. Modified the code to keep only one line for such streets, resolving conflicts in the sample points.</li><li>Addressed the issue of images being assigned to multiple points. Implemented a solution by converting the CRS from degrees to meters and creating a 50-meter buffer. Found the closest image within the buffer for each point. If no images were available within the 50-meter radius, it was considered a missing image.</li><li>Fixed a multiprocessing problem that allowed multiple processes to edit the CSV file simultaneously, resulting in missing or incomplete rows. Introduced a lock variable to control access to the results list for each process. All process results are now correctly stored in the CSV file at the end.</li></ul>
-      I ran the code for the following cities:<br><ul><li>Kampala, Uganda</li><li>Amsterdam, Netherlands</li><li>Mexico City, Mexico</li><li>Dhaka, Bangladesh</li></ul></td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>I ran the code for the following cities:<li>Tel Aviv, Israel</li><li>Seattle, USA</li><li>Melbourne, Australia</li>
-      Also, I started creating visualisations to show the results of GVI per city in maps, as well as for some metrics such as:<ul><li>Adjusted Availability Score</li><li>Raw missing score</li><li>Percentage of unavailable images</li><li>Percentage of unsuitable images</li></ul>
-      Additionally, I updated the README file with instructions about how to create set up the environment to run the code in Google Colab or in a local environment, as well as information about the pipeline. I am also starting to write the introduction and literature review.</td>
-    </tr>
-  </tbody>
-  <tr>
-      <th>8</th>
-      <td>I created a Jupyter Notebook for Google Colab that simplifies the usage of the project by allowing users to run each cell of the notebook without the need to manually download files from the GitHub repository and upload them to Google Colab. Detailed instructions on how to use the notebook are provided in the README file.<br>
-      Additionally, I am currently running the code to calculate the GVI (Green Vegetation Index) value from the NDVI (Normalized Difference Vegetation Index) value using linear regression and linear GAM (Generalized Additive Model) for all the cities.<br>
-      Furthermore, I have begun writing the methodology section for the written component of the project.<td>
-    </tr>
-  </tbody>
-</table>
-
-<br><br> 
 
 ## Setting up the environment
 
@@ -296,10 +241,12 @@ For this explanation, Utrecht Science Park will be used. Therefore, the command 
 ```bash
 python main_script.py 'De Uithof, Utrecht' 50 'MLY|' sample-file 8
 ```
-When executing this command, the code will run the following steps.
+When executing this command, the code will automatically run from Step 1 to Step 4.
+
+![png](images/pipeline.png)
 
 
-### Step 1. Get the road network
+### Step 1. Retrieve street road network and generate sample points
 
 The first step of the code is to retrieve the road network for a specific place using OpenStreetMap data with the help of the OSMNX library. It begins by fetching the road network graph, focusing on roads that are suitable for driving. One important thing to note is that for bidirectional streets, the osmnx library returns duplicate lines. In this code, we take care to remove these duplicates and keep only the unique road segments to ensure that samples are not taken on the same road multiple times, preventing redundancy in subsequent analysis.
 
@@ -312,11 +259,7 @@ road = get_road_network(place)
 
 ![png](images/1.png)
 
-
-
-### Step 2. Select the sample points on the road network
-
-The second step of the code generates a list of evenly distributed points along the road network, with a specified distance between each point. This is achieved using a function that takes the road network data and an optional distance parameter N, which is set to a default value of 50 meters.
+The, a list of evenly distributed points along the road network, with a specified distance between each point is generated. This is achieved using a function that takes the road network data and an optional distance parameter N, which is set to a default value of 50 meters.
 
 The function iterates over each road in the roads dataframe and creates points at regular intervals of the specified distance (N). By doing so, it ensures that the generated points are evenly spaced along the road network.
 
@@ -363,7 +306,7 @@ points = select_points_on_road_network(road, distance)
 ![png](images/2.png)
 
 
-### Step 3. Assign features from Mapillary to each point based on their proximity
+### Step 2. Assign images to each sample point based on proximity
 
 The next step in the pipeline focuses on finding the closest features (images) for each point.
 
@@ -428,7 +371,7 @@ features = get_features_on_points(points, access_token, distance)
 </table>
 
 
-### Step 4. Downloading and processing images associated with the points to calculate the Green View Index
+### Step 3. Clean and process data
 
 In this final step, the download_images_for_points function is responsible for efficiently downloading and processing images associated with the points in the GeoDataFrame to calculate the Green View Index (GVI). The function performs the following sub-steps:
 
@@ -445,14 +388,16 @@ In this final step, the download_images_for_points function is responsible for e
     - Road Centers Identification: The segmentation is analyzed to identify road centers, determining the suitability of the image for further analysis.
     
     - Cropping for Analysis: If road centers are found and the image is panoramic, additional cropping is performed based on the identified road centers. Otherwise, the original image and segmentation are used without modification.
-    
-    - GVI Calculation: The Green View Index (GVI) is calculated for all segmentations, representing the percentage of vegetation visible in the analyzed images.
-
-3. Results Collection: The GVI results, along with the is_panoramic flag and error flags, are collected for each image. The results are written to a CSV file, with each row corresponding to a point in the GeoDataFrame, as soon as a thread finishes its task.
 
 ```python
 results = download_images_for_points(features_copy, access_token, max_workers, place, file_name)
 ```
+    
+
+### Step 4. Calculate GVI
+After each image is cleaned and processed following the previous described steps, the Green View Index (GVI) is calculated for all of their segmentations, representing the percentage of vegetation visible in the analyzed images.
+
+The GVI results, along with the is_panoramic flag and error flags, are collected for each image. The results are written to a CSV file, with each row corresponding to a point in the GeoDataFrame, as soon as a thread finishes its task.
 
 ![png](images/3.png)
 
@@ -469,7 +414,23 @@ results['geometry'] = results.apply(lambda row: Point(float(row["x"]), float(row
 gdf = gpd.GeoDataFrame(results, geometry='geometry', crs=4326)
 ```
 
-### Step 5 (Optional). Estimate missing GVI values with NDVI file
+### Step 5 (Optional). Evaluate image availability and image usability of Mapillary Image data
+After analysing the desired images, the image availability and usability are measured by utilizing the following equations:
+
+![](https://latex.codecogs.com/svg.image?Image&space;Availability&space;Score&space;(IAS)&space;=&space;\frac{N_{imgassigned}}{N_{total}})
+![](https://latex.codecogs.com/svg.image?Image&space;Usability&space;Score&space;(IUS)&space;=&space;\frac{N_{imgassigned&space;\land&space;GVIknown}}{N_{imgassigned}})
+
+Then, to allow comparisons between multiple cities, the adjusted scores for both metrics are calculated by multiplying the natural logarithm of the road lenght.
+![](https://latex.codecogs.com/svg.image?Image&space;Availability&space;Score&space;(IAS)&space;=&space;\frac{N_{imgassigned}}{N_{total}}\times&space;ln(roadlength))
+
+![](https://latex.codecogs.com/svg.image?Adjusted&space;Image&space;Usability&space;Score&space;(AIUS)&space;=&space;\frac{N_{imgassigned&space;\land&space;GVIknown}}{N_{imgassigned}}\times&space;ln(roadlength))
+
+```bash
+python results_metrics.py "De Uithof, Utrecht"
+```
+
+
+### Step 6 (Optional). Model GVI for missing points
 Finally, the analysis employs linear regression and linear generalized additive models (GAM) to extract insights from the GVI points calculated in the previous step. The primary objective here is to estimate the GVI values for points with missing images. For this purpose, the code incorporates a module developed by [Yúri Grings](https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/GreenEx_Py), which facilitates the extraction of the NDVI values from a TIF file for a given list of points of interest.
 
 To successfully execute this step, an NDVI file specific to the study area is needed. For optimal results, it is recommended to use an NDVI file that has been consistently generated for the study area throughout an entire year. Furthermore, ensure that the coordinate reference system (CRS) of the NDVI file is projected, with meters as the unit of measurement.</li>
