@@ -418,6 +418,7 @@ gdf = gpd.GeoDataFrame(results, geometry='geometry', crs=4326)
 After analysing the desired images, the image availability and usability are measured by utilizing the following equations:
 
 ![](https://latex.codecogs.com/svg.image?Image&space;Availability&space;Score&space;(IAS)&space;=&space;\frac{N_{imgassigned}}{N_{total}})
+
 ![](https://latex.codecogs.com/svg.image?Image&space;Usability&space;Score&space;(IUS)&space;=&space;\frac{N_{imgassigned&space;\land&space;GVIknown}}{N_{imgassigned}})
 
 Then, to allow comparisons between multiple cities, the adjusted scores for both metrics are calculated by multiplying the natural logarithm of the road lenght.
