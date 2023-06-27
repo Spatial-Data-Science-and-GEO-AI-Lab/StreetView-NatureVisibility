@@ -1,4 +1,5 @@
-# Automated Street View Index Calculation Pipeline using Mapillary Street Images
+# A Methodological Development of Accessing Greenness Visibility from Open-Source Street View Images: A Multi-City and Multi-Country Implementation
+
 
 ## Aims and objectives
 Urban green spaces provide various benefits, but assessing their visibility is challenging. Traditional methods and Google Street View (GSV) has limitations, therefore integrating Volunteered Street View Imagery (VSVI) platforms like Mapillary has been proposed. Mapillary offers open data and a large community of contributors, but it has its own limitations in terms of data quality and coverage. However, for areas with insufficient street image data, the Normalised Difference Vegetation Index (NDVI) can be used as an alternative indicator for quantifying greenery. While some studies have shown the potential of Mapillary for evaluating urban greenness visibility, there is a lack of systematic evaluation and standardised methodologies.
@@ -508,10 +509,11 @@ python predict_missing_gvi.py "De Uithof, Utrecht" 32631 50
 
 
 ## Acknowledgements and Contact Information
-Project made in collaboration with S.M. Labib from the Department of Human Geography and Spatial Planning at Utrecht University.
+Project made in collaboration with Dr. SM Labib from the Department of Human Geography and Spatial Planning at Utrecht University. This is a project of the Spatial Data Science and Geo-AI Lab, conducted for the Applied Data Science MSc degree
 
 Ilse Abril Vázquez Sánchez<br>
-i.a.vazquezsanchez@students.uu.nl
+i.a.vazquezsanchez@students.uu.nl<br>
+GitHub profile: <a href="https://github.com/iabrilvzqz">iabrilvzqz</a><br>
 
 Dr. S.M. Labib<br>
 s.m.labib@uu.nl
