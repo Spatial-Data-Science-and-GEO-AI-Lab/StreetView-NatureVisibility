@@ -144,6 +144,7 @@ def get_usability_score(df):
 
 
 def get_metrics(city):
+    pd.set_option('display.max_columns', None)
     intersection, count = get_road_unavailable_images(city)
     
     print(f"Unavailable images per road type for {city}")

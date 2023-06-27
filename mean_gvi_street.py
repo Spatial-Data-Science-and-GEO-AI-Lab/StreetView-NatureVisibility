@@ -47,5 +47,5 @@ if __name__ == "__main__":
     roads_with_avg_gvi = roads.merge(gvi_per_road, left_on="index", right_on="road_index", how='left')
 
     # Save results to GPKG
-    path_to_file="results/{}/ndvi/gvi-streets.gpkg".format(city)
+    path_to_file="results/{}/gvi/gvi-streets.gpkg".format(city)
     roads_with_avg_gvi.to_file(path_to_file, driver="GPKG", crs=roads.crs)
