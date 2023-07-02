@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Vázquez Sánchez"
+  given-names: "Ilse Abril"
+- family-names: "Labib"
+  given-names: "SM"
+  orcid: "https://orcid.org/0000-0002-4127-2075"
+title: "Automated Green View Index Modeling Pipeline using Mapillary Street Images and Transformer models"
+version: 0.1.0
+doi: 10.5281/zenodo.8106472
+date-released: 2023-07-03
+url: "https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/StreetView-NatureVisibility"
