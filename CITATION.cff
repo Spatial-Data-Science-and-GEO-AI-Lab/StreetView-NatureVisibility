@@ -8,6 +8,6 @@ authors:
   orcid: "https://orcid.org/0000-0002-4127-2075"
 title: "Automated Green View Index Modeling Pipeline using Mapillary Street Images and Transformer models"
 version: 0.1.0
-doi: 10.5281/zenodo.8106472
+doi: 10.5281/zenodo.8106479
 date-released: 2023-07-03
 url: "https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/StreetView-NatureVisibility"
