@@ -1,4 +1,4 @@
-# A Methodological Development of Accessing Greenness Visibility from Open-Source Street View Images: A Multi-City and Multi-Country Implementation
+# Automated Green View Index Modeling Pipeline using Mapillary Street Images and Transformer models
 
 
 ## Aims and objectives
