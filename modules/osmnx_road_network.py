@@ -55,7 +55,7 @@ def select_points_on_road_network(roads, N=50):
     for row in roads.itertuples(index=True, name='Road'):
         # Get the LineString object from the geometry
         linestring = row.geometry
-        index = row.index
+        index = row.Index
 
         # Calculate the distance along the linestring and create points every 50 meters
         for distance in range(0, int(linestring.length), N):

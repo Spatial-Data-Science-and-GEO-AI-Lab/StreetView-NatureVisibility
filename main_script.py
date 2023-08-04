@@ -15,11 +15,12 @@ if __name__ == "__main__":
     args = sys.argv
     city = args[1] # Name of the city to analyse (e.g. Amsterdam, Netherlands)
     distance = int(args[2])  # Distance between the sample points in meters
-    access_token = args[3] # Access token for mapillary (e.g. MLY|)
-    file_name = args[4] # Name of the csv file in which the points with the GVI value are going to be stored
-    max_workers = int(args[5]) # Number of threads that are going to be used, a good starting point could be the number of cores of the computer
-    begin = int(args[6]) if len(args) > 6 else None
-    end = int(args[7]) if len(args) > 7 else None
+    cut_by_road_centres = int(args[3])  # Determine if panoramic images are going to be cropped using the road centres
+    access_token = args[4] # Access token for mapillary (e.g. MLY|)
+    file_name = args[5] # Name of the csv file in which the points with the GVI value are going to be stored
+    max_workers = int(args[6]) # Number of threads that are going to be used, a good starting point could be the number of cores of the computer
+    begin = int(args[7]) if len(args) > 7 else None
+    end = int(args[8]) if len(args) > 8 else None
     
     process_data.prepare_folders(city)
 
@@ -53,7 +54,7 @@ if __name__ == "__main__":
     # Get the initial time
     start_time = time()
     
-    results = process_data.download_images_for_points(features, access_token, max_workers, city, file_name)
+    results = process_data.download_images_for_points(features, access_token, max_workers, cut_by_road_centres, city, file_name)
     
     # Get the final time
     end_time = time()

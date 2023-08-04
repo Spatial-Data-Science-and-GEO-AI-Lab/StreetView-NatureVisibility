@@ -115,7 +115,7 @@ def find_road_centre(segmentation):
 	return centres
 
 
-def crop_panoramic_images(original_width, image, segmentation, road_centre):
+def crop_panoramic_images_roads(original_width, image, segmentation, road_centre):
     width, height = image.size
 
     # Find duplicated centres
@@ -190,6 +190,29 @@ def crop_panoramic_images(original_width, image, segmentation, road_centre):
     return images, pickles
 
 
+def crop_panoramic_images(image, segmentation):
+    width, height = image.size
+
+    w4 = int(width / 4)
+    h4 = int(height / 4)
+    hFor43 = int(w4 * 3 / 4)
+
+    images = []
+    pickles = []
+
+    # Crop the panoramic image based on road centers
+    for w in range(4):
+        x_begin = w * w4
+        x_end = (w + 1) * w4
+        cropped_image = image.crop((x_begin, h4, x_end, h4 + hFor43))
+        cropped_segmentation = segmentation[h4:h4+hFor43, x_begin:x_end]
+
+        images.append(cropped_image)
+        pickles.append(cropped_segmentation)
+    
+    return images, pickles
+    
+
 def get_GVI(segmentations):
     total_pixels = 0
     vegetation_pixels = 0
@@ -204,10 +227,10 @@ def get_GVI(segmentations):
     return vegetation_pixels / total_pixels
 
 
-def process_images(image_url, is_panoramic, processor, model):
+def process_images(image_url, is_panoramic, cut_by_road_centres, processor, model):
     try:
         # Fetch and process the image
-        image = Image.open(requests.get(image_url, stream=True).raw)
+        image = Image.open(requests.get(image_url, stream=True).raw)    
 
         if is_panoramic:
             # Get the size of the image
@@ -217,47 +240,62 @@ def process_images(image_url, is_panoramic, processor, model):
             bottom_crop = int(height * 0.2)
             image = image.crop((0, 0, width, height - bottom_crop))
 
-        # Apply the semantic segmentation to the image
-        segmentation = segment_images(image, processor, model)
+            # Apply the semantic segmentation to the image
+            segmentation = segment_images(image, processor, model)
+            
+            if cut_by_road_centres:
+                # Create a widened panorama by wrapping the first 25% of the image onto the right edge
+                width, height = image.size
+                w4 = int(0.25 * width)
+                
+                segmentation_25 = segmentation[:, :w4]
+                # Concatenate the tensors along the first dimension (rows) to create the widened panorama with the segmentations
+                segmentation_road = torch.cat((segmentation, segmentation_25), dim=1)
 
-        if is_panoramic:
-            # Create a widened panorama by wrapping the first 25% of the image onto the right edge
-            width, height = image.size
-            w4 = int(0.25 * width)
+                cropped_image = image.crop((0, 0, w4, height))
+                widened_image = Image.new(image.mode, (width + w4, height))
+                widened_image.paste(image, (0, 0))
+                widened_image.paste(cropped_image, (w4, 0))
 
-            segmentation_25 = segmentation[:, :w4]
-            # Concatenate the tensors along the first dimension (rows) to create the widened panorama with the segmentations
-            segmentation_road = torch.cat((segmentation, segmentation_25), dim=1)
-        else:
-            # If the image is not panoramic, use the segmentation as it is
-            segmentation_road = segmentation
+                # Find the road centers to determine if the image is suitable for analysis
+                road_centre = find_road_centre(segmentation_road)
+                
+                # Crop the image and its segmentation based on the previously found road centers
+                images, pickles = crop_panoramic_images_roads(width, widened_image, segmentation_road, road_centre)
         
-        # Find the road centers to determine if the image is suitable for analysis
-        road_centre = find_road_centre(segmentation_road)
-
-        if len(road_centre) > 0:
-            # The image is suitable for analysis
-            if is_panoramic:
-                # If it's panoramic, crop the image and its segmentation based on the previously found road centers
-                images, pickles = crop_panoramic_images(width, image, segmentation_road, road_centre)
+                # Calculate the Green View Index (GVI) for the cropped segmentations
+                GVI = get_GVI(pickles)
             else:
-                # If it's not panoramic, use the segmentation without any modification
-                images = [image]
-                pickles = [segmentation]
+                # Cut panoramic image in 4 equal parts
+                # Crop the image and its segmentation based on the previously found road centers
+                images, pickles = crop_panoramic_images(image, segmentation)
         
-            # Calculate the Green View Index (GVI) for the cropped segmentations
-            GVI = get_GVI(pickles)
-            return images, pickles, [GVI, is_panoramic, False, False]
+                # Calculate the Green View Index (GVI) for the cropped segmentations
+                GVI = get_GVI(pickles)
+            return images, pickles, [GVI, True, False, False]
+
         else:
-            # There are no road centers, so the image is not suitable for analysis
-            return [image], [segmentation], [None, None, True, False]
+            # Apply the semantic segmentation to the image
+            segmentation = segment_images(image, processor, model)
+
+            # If the image is not panoramic, use the segmentation as it is
+            # Find the road centers to determine if the image is suitable for analysis
+            road_centre = find_road_centre(segmentation)
+
+            if len(road_centre) > 0:
+                # Calculate the Green View Index (GVI) for the cropped segmentations
+                GVI = get_GVI([segmentation])
+                return [image], [segmentation], [GVI, False, False, False]
+            else:
+                # There are no road centers, so the image is not suitable for analysis
+                return [image], [segmentation], [None, None, True, False]
     except:
         # If there was an error while processing the image, set the "error" flag to true and continue with other images
         return None, None, [None, None, True, True]
 
 
 # Download images
-def download_image(id, geometry, image_id, is_panoramic, access_token, processor, model):
+def download_image(id, geometry, image_id, is_panoramic, cut_by_road_centres, access_token, processor, model):
     # Check if the image id exists
     if image_id:
         try:
@@ -275,7 +313,7 @@ def download_image(id, geometry, image_id, is_panoramic, access_token, processor
             image_url = data["thumb_original_url"]
 
             # Process the downloaded image using the provided image URL, is_panoramic flag, processor, and model
-            _, _, result = process_images(image_url, is_panoramic, processor, model)
+            _, _, result = process_images(image_url, is_panoramic, cut_by_road_centres, processor, model)
         except:
             # An error occurred during the downloading of the image
             result = [None, None, True, True]
@@ -292,7 +330,7 @@ def download_image(id, geometry, image_id, is_panoramic, access_token, processor
     return result
 
 
-def download_images_for_points(gdf, access_token, max_workers, city, file_name):
+def download_images_for_points(gdf, access_token, max_workers, cut_by_road_centres, city, file_name):
     # Get image processing models
     processor, model = get_models()
 
@@ -325,7 +363,7 @@ def download_images_for_points(gdf, access_token, max_workers, city, file_name):
             for _, row in gdf.iterrows():
                 try:
                     # Submit a download_image task to the executor
-                    futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], access_token, processor, model))
+                    futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], cut_by_road_centres, access_token, processor, model))
                 except Exception as e:
                     print(f"Exception occurred for row {row['id']}: {str(e)}")
             
