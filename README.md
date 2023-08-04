@@ -84,12 +84,12 @@ This notebook contains the following code:
   ```python
   place = 'De Uithof, Utrecht'
   distance = 50
+  cut_by_road_centres = 0
   access_token = 'MLY|'
   file_name = 'utrecht-gvi'
   max_workers = 6
   begin = None
   end = None
-
   ```
   In this example, the main_script.py file will be executed to analyse the Green View Index for De Uithof, Utrecht (Utrecht Science Park).
 
@@ -97,6 +97,7 @@ This notebook contains the following code:
   <ul>
     <li><b>place</b>: indicates the name of the place that you want to analyse. You can set the name of any city, neighbourhood or street you want to analyse.</li>
     <li><b>distance</b>: Represents the distance between sample points in metres.</li>
+    <li><b>cut_by_road_centres</b>: 1 indicates that panoramic images will be cropped using the road centres. If 0 is chosen, then the panoramic images will be cropped into 4 equal-width images.</li>
     <li><b>access_token</b>: Access token for Mapillary (e.g. MLY|). If you don't have an access token yet, you can follow the instructions on <a href="https://help.mapillary.com/hc/en-us/articles/360010234680-Accessing-imagery-and-data-through-the-Mapillary-API#h_ed5f1c3b-8fa3-432d-9e94-1e474cbc1868">this webpage</a>.</li>
     <li><b>file_name</b>: Represents the name of the CSV file where the points with the GVI (Green View Index) value will be stored.</li>
     <li><b>max_workers</b>:  Indicates the number of threads to be used. A good starting point is the number of CPU cores in the computer running the code. However, you can experiment with different thread counts to find the optimal balance between performance and resource utilisation. Keep in mind that this may not always be the maximum number of threads or the number of CPU cores.</li>
@@ -110,7 +111,6 @@ This notebook contains the following code:
   ```python
   command = f'python main_script.py '{place}' {distance} '{access_token}' {file_name} {max_workers} {begin if begin is not None else ''} {end if end is not None else ''}'
   !{command}
-
   ```
   </li>
   <li><b>Generate GeoPackage Files (Optional)</b>: After retrieving the GVI data, the notebook executes another script ('get_gvi_gpkg.py') to generate GeoPackage files from the obtained CSV files. The generated GeoPackage files include the road network of the analysed place, sample points, and the CSV file containing GVI values.
@@ -118,7 +118,6 @@ This notebook contains the following code:
   ```python
   command = f"python get_gvi_gpkg.py '{place}'"
   !{command}
-
   ```
   </li>
   <li><b>Compute Mean GVI per Street, and Get Availability and Usability Scores (Optional)</b>: Additionally, the notebook provides the option to compute the mean Green View Index (GVI) value per street in the road network. Running a script ('mean_gvi_street.py') achieves this computation.
@@ -126,7 +125,6 @@ This notebook contains the following code:
   ```python
   command = f"python mean_gvi_street.py '{place}'"
   !{command}
-
   ```
 
   Once this script was executed, the code to calculate the Image Availability Score and Image Usability Score, along with other quality metrics can be run.
@@ -134,7 +132,6 @@ This notebook contains the following code:
   ```python
   command = f"python results_metrics.py '{place}'"
   !{command}
-
   ```
 
   </li>
@@ -210,13 +207,14 @@ To create a Conda environment and run the code using the provided YML file, foll
   <li><b>Compute GVI index</b>: Once the environment is activated, you can start using the project. To run the code and analyse the Green View Index of a specific place, open the terminal and execute the following command:
   
   ```bash
-  python main_script.py place distance access_token file_name max_workers begin end
+  python main_script.py place distance cut_by_road_centres access_token file_name max_workers begin end
   ```
 
   Replace the following parameters with appropriate values:
   <ul>
     <li><b>place</b>: indicates the name of the place that you want to analyse. You can set the name of any city, neighbourhood or street you want to analyse.</li>
     <li><b>distance</b>: Represents the distance between sample points in metres.</li>
+    <li><b>cut_by_road_centres</b>: 1 indicates that panoramic images will be cropped using the road centres. If 0 is chosen, then the panoramic images will be cropped into 4 equal-width images.</li>
     <li><b>access_token</b>: Access token for Mapillary (e.g. MLY|). If you don't have an access token yet, you can follow the instructions on <a href="https://help.mapillary.com/hc/en-us/articles/360010234680-Accessing-imagery-and-data-through-the-Mapillary-API#h_ed5f1c3b-8fa3-432d-9e94-1e474cbc1868">this webpage</a>.</li>
     <li><b>file_name</b>: Represents the name of the CSV file where the points with the GVI (Green View Index) value will be stored.</li>
     <li><b>max_workers</b>:  Indicates the number of threads to be used. A good starting point is the number of CPU cores in the computer running the code. However, you can experiment with different thread counts to find the optimal balance between performance and resource utilisation. Keep in mind that this may not always be the maximum number of threads or the number of CPU cores.</li>
@@ -417,7 +415,7 @@ In this step, the download_images_for_points function is responsible for efficie
     
     - Road centres Identification: The segmentation is analysed to identify road centres, determining the suitability of the image for further analysis.
     
-    - Cropping for Analysis: If road centres are found and the image is panoramic, additional cropping is performed based on the identified road centres. Otherwise, the original image and segmentation are used without modification.
+    - Cropping for Analysis: If it is indicated and road centres are found in the image, additional cropping is performed based on the identified road centres. Otherwise, the original image and segmentation are used without modification.
 
 ```python
 results = download_images_for_points(features_copy, access_token, max_workers, place, file_name)
