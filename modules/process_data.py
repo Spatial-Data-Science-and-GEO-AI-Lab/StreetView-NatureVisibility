@@ -224,7 +224,7 @@ def get_GVI(segmentations):
         vegetation_pixels += (segment == 8).sum().item()
     
     # Calculate the percentage of green pixels in the segmentation
-    return vegetation_pixels / total_pixels
+    return vegetation_pixels / total_pixels if total_pixels else 0
 
 
 def process_images(image_url, is_panoramic, cut_by_road_centres, processor, model):
@@ -255,7 +255,7 @@ def process_images(image_url, is_panoramic, cut_by_road_centres, processor, mode
                 cropped_image = image.crop((0, 0, w4, height))
                 widened_image = Image.new(image.mode, (width + w4, height))
                 widened_image.paste(image, (0, 0))
-                widened_image.paste(cropped_image, (w4, 0))
+                widened_image.paste(cropped_image, (width, 0))
 
                 # Find the road centers to determine if the image is suitable for analysis
                 road_centre = find_road_centre(segmentation_road)
@@ -272,6 +272,7 @@ def process_images(image_url, is_panoramic, cut_by_road_centres, processor, mode
         
                 # Calculate the Green View Index (GVI) for the cropped segmentations
                 GVI = get_GVI(pickles)
+
             return images, pickles, [GVI, True, False, False]
 
         else:
