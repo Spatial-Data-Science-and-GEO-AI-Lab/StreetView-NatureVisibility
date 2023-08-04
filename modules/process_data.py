@@ -191,17 +191,17 @@ def crop_panoramic_images(original_width, image, segmentation, road_centre):
 
 
 def get_GVI(segmentations):
-    green_percentage = 0
+    total_pixels = 0
+    vegetation_pixels = 0
+    
     for segment in segmentations:
         # Calculate the total number of pixels in the segmentation
-        total_pixels = segment.numel()
+        total_pixels += segment.numel()
         # Filter the pixels that represent vegetation (label 8) and count them
-        vegetation_pixels = (segment == 8).sum().item()
-        # Calculate the percentage of green pixels in the segmentation
-        green_percentage += vegetation_pixels / total_pixels
+        vegetation_pixels += (segment == 8).sum().item()
     
-    # Calculate the average green percentage across all segmentations
-    return green_percentage / len(segmentations)
+    # Calculate the percentage of green pixels in the segmentation
+    return vegetation_pixels / total_pixels
 
 
 def process_images(image_url, is_panoramic, processor, model):

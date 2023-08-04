@@ -10,7 +10,7 @@ import os
 
 # Function to calculate mean NDVI taken from Yúri Grings' GitHub repository
 # https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/GreenEx_Py
-from availability import get_mean_NDVI
+from modules.availability import get_mean_NDVI
 
 def calculate_ndvi(gvi, ndvi, N, city, crs):
     ndvi_folder = os.path.join("results", city, "ndvi")

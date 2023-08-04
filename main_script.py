@@ -1,8 +1,8 @@
 import os
 os.environ['USE_PYGEOS'] = '0'
 
-from process_data import download_images_for_points, prepare_folders
-from osmnx_road_network import get_road_network, select_points_on_road_network, get_features_on_points
+import modules.process_data as process_data
+import modules.osmnx_road_network as road_network
 
 import geopandas as gpd
 from datetime import timedelta
@@ -21,14 +21,14 @@ if __name__ == "__main__":
     begin = int(args[6]) if len(args) > 6 else None
     end = int(args[7]) if len(args) > 7 else None
     
-    prepare_folders(city)
+    process_data.prepare_folders(city)
 
     file_path_features = os.path.join("results", city, "points", "points.gpkg")  
     file_path_road = os.path.join("results", city, "roads", "roads.gpkg")    
 
     if not os.path.exists(file_path_features):
         # Get the sample points and the features assigned to each point
-        road = get_road_network(city)
+        road = road_network.get_road_network(city)
 
         # Save road in gpkg file
         road["index"] = road.index
@@ -37,8 +37,8 @@ if __name__ == "__main__":
         road["length"] = road["length"].astype(float)
         road[["index", "geometry", "length", "highway"]].to_file(file_path_road, driver="GPKG", crs=road.crs)
         
-        points = select_points_on_road_network(road, distance)
-        features = get_features_on_points(points, access_token, distance)
+        points = road_network.select_points_on_road_network(road, distance)
+        features = road_network.get_features_on_points(points, access_token, distance)
         features.to_file(file_path_features, driver="GPKG")
     else:
         # If the points file already exists, then we use it to continue with the analysis
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # Get the initial time
     start_time = time()
     
-    results = download_images_for_points(features, access_token, max_workers, city, file_name)
+    results = process_data.download_images_for_points(features, access_token, max_workers, city, file_name)
     
     # Get the final time
     end_time = time()

@@ -6,7 +6,6 @@ import sys
 
 """ 
 This script converts CSV files generated with the main_script into a GeoPackage (gpkg) file and a GeoJSON file. It processes the CSV files for a specific city, performs data cleaning and validation, and saves the resulting files in the specified path.
-
 The script just takes the city name as a command-line argument
 """
 
