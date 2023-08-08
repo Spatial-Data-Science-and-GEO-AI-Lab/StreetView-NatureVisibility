@@ -109,7 +109,7 @@ This notebook contains the following code:
   <li><b>Retrieve Green View Index (GVI) Data</b>: The notebook executes a script ('main_script.py') to retrieve the Green View Index (GVI) data. The script takes the specified analysis parameters as input and performs the data retrieval process.
   
   ```python
-  command = f'python main_script.py '{place}' {distance} '{access_token}' {file_name} {max_workers} {begin if begin is not None else ''} {end if end is not None else ''}'
+  command = f"python main_script.py '{place}' {distance} {cut_by_road_centres} '{access_token}' {file_name} {max_workers} {begin if begin is not None else ''} {end if end is not None else ''}"
   !{command}
   ```
   </li>
