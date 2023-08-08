@@ -154,6 +154,7 @@ def get_features_on_points(points, access_token, max_distance=50, zoom=14):
     points["is_panoramic"] = points["is_panoramic"].astype(bool)
 
     # Convert results to geodataframe
+    points["road_index"] = points["road_index"].astype(str)
     points["tile"] = points["tile"].astype(str)
 
     # Save the current index as a column
