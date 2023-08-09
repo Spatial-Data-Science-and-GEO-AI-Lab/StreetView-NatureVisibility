@@ -97,7 +97,7 @@ This notebook contains the following code:
   <ul>
     <li><b>place</b>: indicates the name of the place that you want to analyse. You can set the name of any city, neighbourhood or street you want to analyse.</li>
     <li><b>distance</b>: Represents the distance between sample points in metres.</li>
-    <li><b>cut_by_road_centres</b>: 1 indicates that panoramic images will be cropped using the road centres. If 0 is chosen, then the panoramic images will be cropped into 4 equal-width images.</li>
+    <li><b>cut_by_road_centres</b>: 1 indicates that panoramic images will be cropped using the road centres. If 0 is chosen, then the panoramic images will be cropped into 4 equal-width images that will allow to analyse the complete panorama.</li>
     <li><b>access_token</b>: Access token for Mapillary (e.g. MLY|). If you don't have an access token yet, you can follow the instructions on <a href="https://help.mapillary.com/hc/en-us/articles/360010234680-Accessing-imagery-and-data-through-the-Mapillary-API#h_ed5f1c3b-8fa3-432d-9e94-1e474cbc1868">this webpage</a>.</li>
     <li><b>file_name</b>: Represents the name of the CSV file where the points with the GVI (Green View Index) value will be stored.</li>
     <li><b>max_workers</b>:  Indicates the number of threads to be used. A good starting point is the number of CPU cores in the computer running the code. However, you can experiment with different thread counts to find the optimal balance between performance and resource utilisation. Keep in mind that this may not always be the maximum number of threads or the number of CPU cores.</li>
@@ -214,7 +214,7 @@ To create a Conda environment and run the code using the provided YML file, foll
   <ul>
     <li><b>place</b>: indicates the name of the place that you want to analyse. You can set the name of any city, neighbourhood or street you want to analyse.</li>
     <li><b>distance</b>: Represents the distance between sample points in metres.</li>
-    <li><b>cut_by_road_centres</b>: 1 indicates that panoramic images will be cropped using the road centres. If 0 is chosen, then the panoramic images will be cropped into 4 equal-width images.</li>
+    <li><b>cut_by_road_centres</b>: 1 indicates that panoramic images will be cropped using the road centres. If 0 is chosen, then the panoramic images will be cropped into 4 equal-width images that will allow to analyse the complete panorama.</li>
     <li><b>access_token</b>: Access token for Mapillary (e.g. MLY|). If you don't have an access token yet, you can follow the instructions on <a href="https://help.mapillary.com/hc/en-us/articles/360010234680-Accessing-imagery-and-data-through-the-Mapillary-API#h_ed5f1c3b-8fa3-432d-9e94-1e474cbc1868">this webpage</a>.</li>
     <li><b>file_name</b>: Represents the name of the CSV file where the points with the GVI (Green View Index) value will be stored.</li>
     <li><b>max_workers</b>:  Indicates the number of threads to be used. A good starting point is the number of CPU cores in the computer running the code. However, you can experiment with different thread counts to find the optimal balance between performance and resource utilisation. Keep in mind that this may not always be the maximum number of threads or the number of CPU cores.</li>
@@ -267,7 +267,7 @@ To create a Conda environment and run the code using the provided YML file, foll
 For this explanation, Utrecht Science Park will be used. Therefore, the command should look like this:
 
 ```bash
-python main_script.py 'De Uithof, Utrecht' 50 'MLY|' sample-file 8
+python main_script.py 'De Uithof, Utrecht' 50 0 'MLY|' sample-file 8
 ```
 When executing this command, the code will automatically run from Step 1 to Step 4.
 
@@ -407,15 +407,26 @@ In this step, the download_images_for_points function is responsible for efficie
 
 2. Image Download and Processing: The function iterates over the rows in the GeoDataFrame and submits download tasks to a ThreadPoolExecutor for concurrent execution. Each task downloads the associated image, applies specific processing steps, and calculates the GVI. The processing steps include:
     
-    - Panoramic Image Handling: If the image is panoramic, the bottom 20% band, commonly present in panoramic images, is cropped to improve analysis accuracy.
-    
-    - Semantic Segmentation: The downloaded image undergoes semantic segmentation, which assigns labels to different regions or objects in the image.
+    - Panoramic Image Cropping using Road Centers: If the image is panoramic and destined for cropping using road centers, the following steps are followed:
+      1. Crop the bottom 20% band to improve analysis accuracy, focusing on critical features.
+      2. Apply semantic segmentation to categorize different regions or objects within the image.
+      3. Augment the panorama's width by wrapping the initial 25% of the image around its right edge. This addition enhances the scene's comprehensiveness.
+      4. Identify road centres using the segmentation output to to establish the base points for cropping.
+      5. Crop the image based on the found road centres.<br><br>
 
-    - Widened Panorama: For panoramic images, a widened panorama is created by wrapping the first 25% of the image onto the right edge. This step ensures a more comprehensive representation of the scene.
+      ![png](images/panoramic-roads.png)
     
-    - Road centres Identification: The segmentation is analysed to identify road centres, determining the suitability of the image for further analysis.
+    - Panoramic Image without Road Center Cropping: When dealing with panoramic images not intended for cropping via road centers, the process unfolds as follows:
+      1. Crop the bottom 20% band to improve analysis accuracy
+      2. Apply semantic segmentation to assign labels to different regions or objects in the image.
+      3. Divide the image into four equal-width sections.<br><br>
+
+      ![png](images/panoramic-noroads.png)
     
-    - Cropping for Analysis: If it is indicated and road centres are found in the image, additional cropping is performed based on the identified road centres. Otherwise, the original image and segmentation are used without modification.
+    - Non-Panoramic Image
+      1. Apply semantic segmentation to assign labels to different regions or objects in the image.
+      2. Identify road centres using the segmentation to determine the suitability of the image. This involves ascertaining whether the camera angle captures a valuable portion of the panorama for analysis.
+      5. If road centers cannot be identified, the image is disregarded and excluded from further analysis.<br><br>
 
 ```python
 results = download_images_for_points(features_copy, access_token, max_workers, place, file_name)
