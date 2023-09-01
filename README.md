@@ -94,6 +94,7 @@ This notebook contains the following code:
   access_token = 'MLY|'
   file_name = 'utrecht-gvi'
   max_workers = 6
+  num_sample_images = 10
   begin = None
   end = None
   ```
@@ -107,6 +108,7 @@ This notebook contains the following code:
     <li><b>access_token</b>: Access token for Mapillary (e.g. MLY|). If you don't have an access token yet, you can follow the instructions on <a href="https://help.mapillary.com/hc/en-us/articles/360010234680-Accessing-imagery-and-data-through-the-Mapillary-API#h_ed5f1c3b-8fa3-432d-9e94-1e474cbc1868">this webpage</a>.</li>
     <li><b>file_name</b>: Represents the name of the CSV file where the points with the GVI (Green View Index) value will be stored.</li>
     <li><b>max_workers</b>:  Indicates the number of threads to be used. A good starting point is the number of CPU cores in the computer running the code. However, you can experiment with different thread counts to find the optimal balance between performance and resource utilisation. Keep in mind that this may not always be the maximum number of threads or the number of CPU cores.</li>
+    <li><b>num_sample_images</b>: Number of images that are going to be stored along with their segmentations.</li>
     <li><b>begin</b> and <b>end</b>: Define the range of points to be analysed. If desired, you can omit these parameters, allowing the code to run for the entire dataset. However, specifying the range can be useful, especially if the code stops running before analysing all the points.</li>
   </ul>
   <br>
@@ -213,7 +215,7 @@ To create a Conda environment and run the code using the provided YML file, foll
   <li><b>Compute GVI index</b>: Once the environment is activated, you can start using the project. To run the code and analyse the Green View Index of a specific place, open the terminal and execute the following command:
   
   ```bash
-  python main_script.py place distance cut_by_road_centres access_token file_name max_workers begin end
+  python main_script.py place distance cut_by_road_centres access_token file_name max_workers num_sample_images begin end
   ```
 
   Replace the following parameters with appropriate values:
@@ -224,6 +226,7 @@ To create a Conda environment and run the code using the provided YML file, foll
     <li><b>access_token</b>: Access token for Mapillary (e.g. MLY|). If you don't have an access token yet, you can follow the instructions on <a href="https://help.mapillary.com/hc/en-us/articles/360010234680-Accessing-imagery-and-data-through-the-Mapillary-API#h_ed5f1c3b-8fa3-432d-9e94-1e474cbc1868">this webpage</a>.</li>
     <li><b>file_name</b>: Represents the name of the CSV file where the points with the GVI (Green View Index) value will be stored.</li>
     <li><b>max_workers</b>:  Indicates the number of threads to be used. A good starting point is the number of CPU cores in the computer running the code. However, you can experiment with different thread counts to find the optimal balance between performance and resource utilisation. Keep in mind that this may not always be the maximum number of threads or the number of CPU cores.</li>
+    <li><b>num_sample_images</b>: Number of images that are going to be stored along with their segmentations.</li>
     <li><b>begin</b> and <b>end</b>: Define the range of points to be analysed. If desired, you can omit these parameters, allowing the code to run for the entire dataset. However, specifying the range can be useful, especially if the code stops running before analysing all the points.</li>
   </ul>
   <br>

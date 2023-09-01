@@ -7,6 +7,7 @@ import modules.osmnx_road_network as road_network
 import geopandas as gpd
 from datetime import timedelta
 from time import time
+import random
 import sys
 
 
@@ -19,8 +20,9 @@ if __name__ == "__main__":
     access_token = args[4] # Access token for mapillary (e.g. MLY|)
     file_name = args[5] # Name of the csv file in which the points with the GVI value are going to be stored
     max_workers = int(args[6]) # Number of threads that are going to be used, a good starting point could be the number of cores of the computer
-    begin = int(args[7]) if len(args) > 7 else None
-    end = int(args[8]) if len(args) > 8 else None
+    num_sample_images = int(args[7])
+    begin = int(args[8]) if len(args) > 8 else None
+    end = int(args[9]) if len(args) > 9 else None
     
     process_data.prepare_folders(city)
 
@@ -50,6 +52,14 @@ if __name__ == "__main__":
     # If we include a begin and end value, then the dataframe is splitted and we are going to analyse just that points
     if begin != None and end != None:   
         features = features.iloc[begin:end]
+    
+    # Get a list of n random row indices
+    sample_indices = random.sample(range(len(features)), num_sample_images)
+    # Create a new column 'random_flag' and set it to False for all rows
+    features["save_sample"] = False
+
+    # Set True for the randomly selected rows
+    features.loc[sample_indices, "save_sample"] = True
 
     # Get the initial time
     start_time = time()

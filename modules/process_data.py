@@ -10,6 +10,7 @@ from tqdm import tqdm
 import threading
 import csv
 
+from modules.segmentation_images import save_images
 
 from PIL import Image, ImageFile
 import numpy as np
@@ -31,6 +32,10 @@ def prepare_folders(city):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     
+    dir_path = os.path.join("results", city, "sample_images")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
 
 def get_models():
     # Load the pretrained AutoImageProcessor from the "facebook/mask2former-swin-large-cityscapes-semantic" model
@@ -296,7 +301,7 @@ def process_images(image_url, is_panoramic, cut_by_road_centres, processor, mode
 
 
 # Download images
-def download_image(id, geometry, image_id, is_panoramic, cut_by_road_centres, access_token, processor, model):
+def download_image(id, geometry, image_id, is_panoramic, save_sample, city, cut_by_road_centres, access_token, processor, model):
     # Check if the image id exists
     if image_id:
         try:
@@ -314,7 +319,11 @@ def download_image(id, geometry, image_id, is_panoramic, cut_by_road_centres, ac
             image_url = data["thumb_original_url"]
 
             # Process the downloaded image using the provided image URL, is_panoramic flag, processor, and model
-            _, _, result = process_images(image_url, is_panoramic, cut_by_road_centres, processor, model)
+            images, segmentations, result = process_images(image_url, is_panoramic, cut_by_road_centres, processor, model)
+
+            if save_sample:
+                save_images(city, id, images, segmentations, result[0])
+
         except:
             # An error occurred during the downloading of the image
             result = [None, None, True, True]
@@ -364,7 +373,7 @@ def download_images_for_points(gdf, access_token, max_workers, cut_by_road_centr
             for _, row in gdf.iterrows():
                 try:
                     # Submit a download_image task to the executor
-                    futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], cut_by_road_centres, access_token, processor, model))
+                    futures.append(executor.submit(download_image, row["id"], row["geometry"], row["image_id"], row["is_panoramic"], row["save_sample"], city, cut_by_road_centres, access_token, processor, model))
                 except Exception as e:
                     print(f"Exception occurred for row {row['id']}: {str(e)}")
             
