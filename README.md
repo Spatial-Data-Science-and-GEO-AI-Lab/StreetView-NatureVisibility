@@ -34,7 +34,7 @@ To run the project in Google Colab, you have two options:
 
 <ol>
   <li>Download the mapillary_GVI_googlecolab.ipynb notebook and open it on Google Colab.</li>
-  <li>Alternatively, you can directly access the notebook using <a href="https://drive.google.com/file/d/12PvgNywwwzfuqrtoeAZRD6UIQb3jqDRX/view?usp=sharing">this link</a></li>
+  <li>Alternatively, you can directly access the notebook using <a href="https://colab.research.google.com/github/Spatial-Data-Science-and-GEO-AI-Lab/StreetView-NatureVisibility/blob/main/mapillary_GVI_googlecolab.ipynb">this link</a></li>
 </ol>
 
 Before running the Jupyter Notebook, it is optional but highly recommended to configure Google Colab to use a GPU. Follow these steps:
