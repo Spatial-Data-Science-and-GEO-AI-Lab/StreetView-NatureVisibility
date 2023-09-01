@@ -12,7 +12,7 @@ import os
 # https://github.com/Spatial-Data-Science-and-GEO-AI-Lab/GreenEx_Py
 from modules.availability import get_mean_NDVI
 
-def calculate_ndvi(gvi, ndvi, N, city, crs):
+def calculate_ndvi(gvi, ndvi, N, city: str, crs) -> str:
     ndvi_folder = os.path.join("results", city, "ndvi")
     
     mean_ndvi = get_mean_NDVI(  point_of_interest_file=gvi,
@@ -31,7 +31,7 @@ def calculate_ndvi(gvi, ndvi, N, city, crs):
     return path_to_file
 
 
-def linear_regression(city):
+def linear_regression(city: str) -> pd.DataFrame:
     ndvi_folder = os.path.join("results", city, "ndvi")
 
     # Load ndvi layer
@@ -87,7 +87,7 @@ def linear_regression(city):
     return updated_df
 
 
-def gam_regression(city):
+def gam_regression(city: str) -> pd.DataFrame:
     ndvi_folder = os.path.join("results", city, "ndvi")
 
     # Load ndvi layer
@@ -146,7 +146,7 @@ def gam_regression(city):
     return updated_df
 
 
-def clean_points(city, crs):
+def clean_points(city: str, crs: int) -> str:
     # Cleans the GVI points data by dropping points outside the extent of the NDVI file.
 
     # File paths for the GVI points and NDVI files
