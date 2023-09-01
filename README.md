@@ -1,6 +1,6 @@
 # Automated Green View Index Modeling Pipeline using Mapillary Street Images and Transformer models [![DOI](https://zenodo.org/badge/637342975.svg)](https://zenodo.org/badge/latestdoi/637342975)
 
-<a target="_blank" href="https://drive.google.com/file/d/12PvgNywwwzfuqrtoeAZRD6UIQb3jqDRX/view?usp=sharing">
+<a target="_blank" href="https://colab.research.google.com/github/Spatial-Data-Science-and-GEO-AI-Lab/StreetView-NatureVisibility/blob/main/mapillary_GVI_googlecolab.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
