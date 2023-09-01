@@ -1,5 +1,11 @@
 # Automated Green View Index Modeling Pipeline using Mapillary Street Images and Transformer models [![DOI](https://zenodo.org/badge/637342975.svg)](https://zenodo.org/badge/latestdoi/637342975)
 
+<a target="_blank" href="https://drive.google.com/file/d/12PvgNywwwzfuqrtoeAZRD6UIQb3jqDRX/view?usp=sharing">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+
+
+
 ## Aims and objectives
 Urban green spaces provide various benefits, but assessing their visibility is challenging. Traditional methods and Google Street View (GSV) has limitations, therefore integrating Volunteered Street View Imagery (VSVI) platforms like Mapillary has been proposed. Mapillary offers open data and a large community of contributors, but it has its own limitations in terms of data quality and coverage. However, for areas with insufficient street image data, the Normalised Difference Vegetation Index (NDVI) can be used as an alternative indicator for quantifying greenery. While some studies have shown the potential of Mapillary for evaluating urban greenness visibility, there is a lack of systematic evaluation and standardised methodologies.
 
