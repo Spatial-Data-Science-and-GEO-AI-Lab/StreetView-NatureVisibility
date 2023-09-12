@@ -9,20 +9,22 @@ from datetime import timedelta
 from time import time
 import random
 import sys
+import ast
 
 
 if __name__ == "__main__":
     # When running the code from the terminal, this is the order in which the parameters should be entered
     args = sys.argv
     city = args[1] # Name of the city to analyse (e.g. Amsterdam, Netherlands)
-    distance = int(args[2])  # Distance between the sample points in meters
-    cut_by_road_centres = int(args[3])  # Determine if panoramic images are going to be cropped using the road centres
-    access_token = args[4] # Access token for mapillary (e.g. MLY|)
-    file_name = args[5] # Name of the csv file in which the points with the GVI value are going to be stored
-    max_workers = int(args[6]) # Number of threads that are going to be used, a good starting point could be the number of cores of the computer
-    num_sample_images = int(args[7])
-    begin = int(args[8]) if len(args) > 8 else None
-    end = int(args[9]) if len(args) > 9 else None
+    bbox = ast.literal_eval(args[2])
+    distance = int(args[3])  # Distance between the sample points in meters
+    cut_by_road_centres = int(args[4])  # Determine if panoramic images are going to be cropped using the road centres
+    access_token = args[5] # Access token for mapillary (e.g. MLY|)
+    file_name = args[6] # Name of the csv file in which the points with the GVI value are going to be stored
+    max_workers = int(args[7]) # Number of threads that are going to be used, a good starting point could be the number of cores of the computer
+    num_sample_images = int(args[8])
+    begin = int(args[9]) if len(args) > 9 else None
+    end = int(args[10]) if len(args) > 10 else None
     
     process_data.prepare_folders(city)
 
@@ -31,7 +33,7 @@ if __name__ == "__main__":
 
     if not os.path.exists(file_path_features):
         # Get the sample points and the features assigned to each point
-        road = road_network.get_road_network(city)
+        road = road_network.get_road_network(city, bbox)
 
         # Save road in gpkg file
         road["index"] = road.index

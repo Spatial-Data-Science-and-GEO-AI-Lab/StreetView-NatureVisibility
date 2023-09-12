@@ -13,12 +13,15 @@ import pandas as pd
 import numpy as np
 import requests
 
-def get_road_network(city):
+def get_road_network(city, bbox):
     # Get the road network graph using OpenStreetMap data
     # 'network_type' argument is set to 'drive' to get the road network suitable for driving
     # 'simplify' argument is set to 'True' to simplify the road network
-    G = ox.graph_from_place(city, network_type="drive", simplify=True)
-
+    if len(bbox) == 0:
+        G = ox.graph_from_place(city, network_type="drive", simplify=True)
+    else:
+        G = ox.graph_from_bbox(*bbox, network_type="drive", simplify=True)
+        
     # Create a set to store unique road identifiers
     unique_roads = set()
     # Create a new graph to store the simplified road network
